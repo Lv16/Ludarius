@@ -8,7 +8,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET', 'replace-me-for-prod')
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'testserver']
 
 # Application definition
 INSTALLED_APPS = [
@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    'rest_framework_simplejwt.token_blacklist',
     'django.contrib.sites',
     'allauth',
     'allauth.account',
@@ -38,6 +39,7 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -82,6 +84,17 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
+# Internationalization
+from django.utils.translation import gettext_lazy as _
+
+LANGUAGES = [
+    ('pt-br', _('Português (Brasil)')),
+    ('en', _('English')),
+]
+
+# Where to find translation files
+LOCALE_PATHS = [BASE_DIR / 'locale']
+
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
@@ -108,6 +121,7 @@ LOGIN_REDIRECT_URL = '/'
 
 # Email backend for development (console). Configure SMTP for production.
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@ludarius.local')
 
 # Social providers example (Google) - configure credentials in admin (SocialApplication)
 SOCIALACCOUNT_PROVIDERS = {
@@ -131,7 +145,15 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ),
+    # throttle rates for DRF SimpleRateThrottle scopes
+    'DEFAULT_THROTTLE_RATES': {
+        'login': '5/min',
+        'password_reset': '3/hour',
+    },
 }
+
+# Frontend URL to redirect users from password reset links
+PASSWORD_RESET_FRONTEND_URL = os.environ.get('PASSWORD_RESET_FRONTEND_URL', 'http://localhost:3000/reset-password')
 
 # Simple JWT settings (customize lifetimes in production)
 from datetime import timedelta
@@ -139,4 +161,14 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'AUTH_HEADER_TYPES': ('Bearer',),
+    # rotate refresh tokens and blacklist old ones (recommended)
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
 }
+
+# JWT cookie settings (used to store refresh token securely)
+JWT_COOKIE_NAME = os.environ.get('JWT_COOKIE_NAME', 'refresh_token')
+JWT_COOKIE_SECURE = not DEBUG  # True in production over HTTPS
+JWT_COOKIE_HTTPONLY = True
+JWT_COOKIE_SAMESITE = 'Lax'  # consider 'Strict' or 'None' depending on frontend setup
+JWT_COOKIE_PATH = '/api/token/refresh/'
