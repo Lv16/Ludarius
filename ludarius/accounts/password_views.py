@@ -7,6 +7,7 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.conf import settings
 from django.utils import translation
+from django.utils.translation import gettext as _
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -40,7 +41,7 @@ class PasswordResetRequestView(APIView):
             # build a reset link — frontend will consume uid & token
             reset_path = f"/reset-password-confirm/?uid={uid}&token={token}"
             reset_url = request.build_absolute_uri(reset_path)
-            subject = 'Ludarius — Password reset'
+            subject = _('Ludarius — Password reset')
 
             # choose templates based on active language (LocaleMiddleware or ?lang=)
             # prefer explicit query param ?lang= over negotiated language
