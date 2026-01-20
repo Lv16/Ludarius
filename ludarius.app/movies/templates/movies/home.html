@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ludarius</title>
+</head>
+<body>
+    <h1>Ludarius</h1>
+    <p>Lista de filmes cadastrados</p>
+    <ul>
+        {% for movie in movies %}
+        <li>
+            <a href="{% url 'movie_detail' movie.id %}">
+                {{ movie.title}}
+            </a>
+            {% if movie.rating %} - Nota: {{ movie.rating }}{% endif %}
+        </li>
+        {% empty %}
+        <li>Nenhum filme cadastrado.</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

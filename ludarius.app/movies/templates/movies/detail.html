@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ movie.title }} | Ludarius</title>
+</head>
+<body>
+  <a href="{% url 'home' %}">← Voltar</a>
+
+  <h1>{{ movie.title }}</h1>
+  {% if movie.poster_url %}
+  <img src="{{ movie.poster_url }}" alt="Poster de {{ movie.title }}" width="180">
+{% endif %}
+
+  {% if movie.original_title %}
+    <p><strong>Título original:</strong> {{ movie.original_title }}</p>
+  {% endif %}
+
+  {% if movie.release_date %}
+    <p><strong>Lançamento:</strong> {{ movie.release_date }}</p>
+  {% endif %}
+
+  {% if movie.rating %}
+    <p><strong>Nota:</strong> {{ movie.rating }}</p>
+  {% endif %}
+
+  {% if movie.synopsis %}
+    <p><strong>Sinopse:</strong> {{ movie.synopsis }}</p>
+  {% endif %}
+
+  <hr>
+
+  <h2>Onde assistir</h2>
+
+{% if availabilities %}
+  <ul>
+    {% for a in availabilities %}
+      <li>
+        <strong>{{ a.platform.name }}</strong>
+        — {{ a.get_access_type_display }}
+        {% if a.price %} — R$ {{ a.price }}{% endif %}
+        {% if a.link %} — <a href="{{ a.link }}" target="_blank" rel="noopener">Abrir</a>{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>Ainda não há disponibilidade cadastrada para este título.</p>
+{% endif %}
+</body>
+</html>
