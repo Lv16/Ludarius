@@ -47,5 +47,31 @@
 {% else %}
   <p>Ainda não há disponibilidade cadastrada para este título.</p>
 {% endif %}
+<hr>
+<h2>Comentários</h2>
+
+{% if user.is_authenticated %}
+  <form action="post" action="{% url 'add_comment' movie.id %}">
+    {% csrf_token %}
+    {{ comment_form.as_p }}
+    <button type="submit">Adicionar comentário</button>
+  </form>
+  <hr>
+
+  <ul>
+    {% for c in comments %}
+    <li>
+      <strong>{{ c.user.username }}</strong>
+      em {{ c.created_at|date:"d/m/Y H:i" }}:
+      <p>{{ c.text }}</p>
+    </li>
+    {% empty %}
+    <li>Ainda não há comentários para este filme.</li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>Faça login para ver e adicionar comentários.</p>
+{% endif %}
+
 </body>
 </html>

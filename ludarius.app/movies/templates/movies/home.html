@@ -8,6 +8,19 @@
 <body>
     <h1>Ludarius</h1>
     <p>Lista de filmes cadastrados</p>
+    <form method="get"action="">
+        <input type="text"
+         name="q"
+         placeholder="Buscar por título"
+         value="{{ q|default:'' }}"
+         autocomplete="off"
+         />
+        <button type="submit">Buscar</button>
+
+        {% if q %}
+          <a href="/">Limpar</a>
+        {% endif %}
+    </form>
     <ul>
         {% for movie in movies %}
         <li>
@@ -17,7 +30,11 @@
             {% if movie.rating %} - Nota: {{ movie.rating }}{% endif %}
         </li>
         {% empty %}
+        {% if q %}
+        <li>Nenhum filme encontrado para “{{ q }}”.</li>
+        {% else %}
         <li>Nenhum filme cadastrado.</li>
+        {% endif %}
         {% endfor %}
     </ul>
 </body>
