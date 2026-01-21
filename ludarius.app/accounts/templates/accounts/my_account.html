@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Minha Conta | Ludarius{% endblock %}
+
+{% block content %}
+<h2>Minha Conta</h2>
+
+<p><strong>Usuário:</strong> {{ user.username }}</p>
+{% if user.email %}
+<p><strong>Email:</strong> {{ user.email }}</p>
+{% endif %}
+<hr>
+
+<p>Ações</p>
+<ul>
+    <li><a href="{% url 'logout' %}">Sair</a></li>
+</ul>
+
+{% endblock %}

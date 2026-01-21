@@ -10,10 +10,10 @@
         <h1><a href="/" style="text-decoration: none;">Ludarius</a></h1>
         <nav>
             {% if user.is_authenticated %}
-                <span>Bem-vindo, {{ user.username }}!</span>
-                <a href="{% url 'logout' %}">Logout</a>
+            <a href="{% url 'my_account' %}">Minha Conta</a>
+            <a href="{% url 'logout' %}">Sair</a>
             {% else %}
-                <a href="{% url 'login' %}">Login</a>
+            <a href="{% url 'login' %}">Entrar</a>
             {% endif %}
         </nav>
     </header>

@@ -1,43 +1,35 @@
-<!doctype html>
-<html lang="pt-br">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{{ movie.title }} | Ludarius</title>
-</head>
-<body>
-   {% extends "core/base.html" %}
+{% extends "base.html" %}
 
-    {% block title %}Início | Ludarius{% endblock %}
+{% block title %}{{ movie.title }} | Ludarius{% endblock %}
 
-    {% block content %}
+{% block content %}
 
-  <a href="{% url 'home' %}">← Voltar</a>
+<a href="{% url 'home' %}">← Voltar</a>
 
-  <h1>{{ movie.title }}</h1>
-  {% if movie.poster_url %}
+<h1>{{ movie.title }}</h1>
+{% if movie.poster_url %}
   <img src="{{ movie.poster_url }}" alt="Poster de {{ movie.title }}" width="180">
 {% endif %}
 
-  {% if movie.original_title %}
-    <p><strong>Título original:</strong> {{ movie.original_title }}</p>
-  {% endif %}
+{% if movie.original_title %}
+  <p><strong>Título original:</strong> {{ movie.original_title }}</p>
+{% endif %}
 
-  {% if movie.release_date %}
-    <p><strong>Lançamento:</strong> {{ movie.release_date }}</p>
-  {% endif %}
+{% if movie.release_date %}
+  <p><strong>Lançamento:</strong> {{ movie.release_date }}</p>
+{% endif %}
 
-  {% if movie.rating %}
-    <p><strong>Nota:</strong> {{ movie.rating }}</p>
-  {% endif %}
+{% if movie.rating %}
+  <p><strong>Nota:</strong> {{ movie.rating }}</p>
+{% endif %}
 
-  {% if movie.synopsis %}
-    <p><strong>Sinopse:</strong> {{ movie.synopsis }}</p>
-  {% endif %}
+{% if movie.synopsis %}
+  <p><strong>Sinopse:</strong> {{ movie.synopsis }}</p>
+{% endif %}
 
-  <hr>
+<hr>
 
-  <h2>Onde assistir</h2>
+<h2>Onde assistir</h2>
 
 {% if availabilities %}
   <ul>
@@ -79,7 +71,5 @@
 {% else %}
   <p>Faça login para ver e adicionar comentários.</p>
 {% endif %}
-{% endblock %}
 
-</body>
-</html>
+{% endblock %}
