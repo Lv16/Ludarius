@@ -1,6 +1,8 @@
 from django.shortcuts import render, get_object_or_404
 from .models import Movie
-from comments.models import Comment
+from comments.forms import CommentForm
+from .services.tmdb import search_movies
+from .services.tmdb import get_movie_details, get_movie_watch_providers
 
 
 def home(request):
@@ -10,7 +12,19 @@ def home(request):
         movies = movies.filter(title__icontains=q)
     movies = movies[:50]
     
-    return render(request, "movies/home.html", {"movies": movies, "q": q})
+    tmdb_results = []
+    if q:
+        try:
+            tmdb_results = search_movies(q)
+        except Exception:
+            tmdb_results = []
+            
+    return render(request, "movies/home.html", {
+        "movies": movies,
+        "q": q,
+        "tmdb_results": tmdb_results,
+    })
+    
 
 
 def movie_detail(request, movie_id):
@@ -35,3 +49,20 @@ def movie_detail(request, movie_id):
         "comments": comments,
         "comment_form": form,
     })
+    
+def tmdb_movie_detail(request, tmdb_id):
+    movie = get_movie_details(tmdb_id)
+
+    providers = {}
+    try:
+        providers = get_movie_watch_providers(tmdb_id, region="BR")
+    except Exception:
+        providers = {"link": "", "flatrate": [], "rent": [], "buy": []} 
+        
+    return render(request, "movies/tmdb_detail.html", {
+        "movie": movie,
+        "providers": providers,
+    })
+        
+    
+

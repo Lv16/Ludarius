@@ -4,34 +4,68 @@
 
 {% block content %}
 
-<p>Lista de filmes cadastrados</p>
-<form method="get" action="">
-    <input type="text"
-           name="q"
-           placeholder="Buscar por título"
-           value="{{ q|default:'' }}"
-           autocomplete="off"
-    />
-    <button type="submit">Buscar</button>
+<p>Encontre onde assistir e quanto custa.</p>
 
-    {% if q %}
-      <a href="/">Limpar</a>
-    {% endif %}
+<form method="get" action="">
+  <input
+    type="text"
+    name="q"
+    placeholder="Buscar por título"
+    value="{{ q|default:'' }}"
+    autocomplete="off"
+  />
+  <button type="submit">Buscar</button>
+
+  {% if q %}
+    <a href="/">Limpar</a>
+  {% endif %}
 </form>
+
+<hr>
+
+<h2>Filmes cadastrados</h2>
+
 <ul>
-    {% for movie in movies %}
+  {% for movie in movies %}
     <li>
-        <a href="{% url 'movie_detail' movie.id %}">
-            {{ movie.title }}
-        </a>
-        {% if movie.rating %} - Nota: {{ movie.rating }}{% endif %}
+      <a href="{% url 'movie_detail' movie.id %}">
+        {{ movie.title }}
+      </a>
+      {% if movie.rating %} — Nota: {{ movie.rating }}{% endif %}
     </li>
-    {% empty %}
+  {% empty %}
     {% if q %}
-    <li>Nenhum filme encontrado para “{{ q }}”.</li>
+      <li>Nenhum filme encontrado para “{{ q }}”.</li>
     {% else %}
-    <li>Nenhum filme cadastrado.</li>
+      <li>Nenhum filme cadastrado.</li>
     {% endif %}
-    {% endfor %}
+  {% endfor %}
 </ul>
+
+<hr>
+
+<h2>Resultados do TMDB</h2>
+
+{% if q %}
+  <ul>
+    {% for r in tmdb_results %}
+      <li>
+        {% if r.poster_url %}
+          <img src="{{ r.poster_url }}" alt="Poster" width="50" style="vertical-align: middle;">
+        {% endif %}
+        <a href="{% url 'tmdb_movie_detail' r.tmdb_id %}">
+            <strong>{{ r.title }}</strong>
+        </a>
+        {% if r.release_date %} ({{ r.release_date }}){% endif %}
+        {% if r.rating %} — Nota: {{ r.rating }}{% endif %}
+        <span> — TMDB</span>
+      </li>
+    {% empty %}
+      <li>Nenhum resultado encontrado no TMDB para “{{ q }}”.</li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>Digite algo na busca para consultar o TMDB.</p>
+{% endif %}
+
 {% endblock %}

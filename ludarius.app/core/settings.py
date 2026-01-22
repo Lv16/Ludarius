@@ -9,6 +9,9 @@ https://docs.djangoproject.com/en/6.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
 from pathlib import Path
 
@@ -123,3 +126,5 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+TMDB_API_KEY = os.getenv('TMDB_API_KEY')

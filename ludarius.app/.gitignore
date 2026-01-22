@@ -1,0 +1,75 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+*.egg-info/
+*.egg
+dist/
+build/
+eggs/
+parts/
+bin/
+var/
+sdist/
+develop-eggs/
+pip-wheel-metadata/
+wheelhouse/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+.tox/
+*.cover
+*.coverage
+.coverage.*
+.cache
+.pytest_cache/
+htmlcov/
+coverage.xml
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+# Ignore database files and local settings
+*.sqlite3
+db.sqlite3
+.env
+.env.*
+local_settings.py
+
+# Media and static files (if generated)
+media/
+staticfiles/
+
+# PyCharm/VSCode
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Virtualenv
+venv/
+ENV/
+env/
+.venv/
+
+# Pycache in migrations
+*/migrations/__pycache__/
+
+# Logs
+*.log
+
+# Secrets and credentials
+*.pem
+*.key

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}{{ movie.title }} | Ludarius{% endblock %}
+
+{% block content %}
+  <a href="{% url 'home' %}">← Voltar</a>
+
+  <h2>{{ movie.title }}</h2>
+
+  {% if movie.original_title and movie.original_title != movie.title %}
+    <p><strong>Título original:</strong> {{ movie.original_title }}</p>
+  {% endif %}
+
+  {% if movie.release_date %}
+    <p><strong>Lançamento:</strong> {{ movie.release_date }}</p>
+  {% endif %}
+
+  {% if movie.runtime %}
+    <p><strong>Duração:</strong> {{ movie.runtime }} min</p>
+  {% endif %}
+
+  {% if movie.genres %}
+    <p><strong>Gêneros:</strong> {{ movie.genres|join:", " }}</p>
+  {% endif %}
+
+  {% if movie.rating %}
+    <p><strong>Nota:</strong> {{ movie.rating }}</p>
+  {% endif %}
+
+  {% if movie.poster_url %}
+    <img src="{{ movie.poster_url }}" alt="Poster de {{ movie.title }}" width="220">
+  {% endif %}
+
+  {% if movie.overview %}
+    <hr>
+    <p><strong>Sinopse:</strong></p>
+    <p>{{ movie.overview }}</p>
+  {% endif %}
+
+  <hr>
+  <h3>Onde assistir (Brasil)</h3>
+
+  {% if providers.flatrate or providers.rent or providers.buy %}
+    {% if providers.flatrate %}
+      <p><strong>Incluso na assinatura</strong></p>
+      <ul>
+        {% for p in providers.flatrate %}
+          <li>
+            {% if p.logo_url %}
+              <img src="{{ p.logo_url }}" alt="{{ p.name }}" width="28" style="vertical-align: middle;">
+            {% endif %}
+            {{ p.name }}
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if providers.rent %}
+      <p><strong>Aluguel</strong></p>
+      <ul>
+        {% for p in providers.rent %}
+          <li>
+            {% if p.logo_url %}
+              <img src="{{ p.logo_url }}" alt="{{ p.name }}" width="28" style="vertical-align: middle;">
+            {% endif %}
+            {{ p.name }}
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if providers.buy %}
+      <p><strong>Compra</strong></p>
+      <ul>
+        {% for p in providers.buy %}
+          <li>
+            {% if p.logo_url %}
+              <img src="{{ p.logo_url }}" alt="{{ p.name }}" width="28" style="vertical-align: middle;">
+            {% endif %}
+            {{ p.name }}
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if providers.link %}
+      <p>
+        <a href="{{ providers.link }}" target="_blank" rel="noopener">
+          Abrir página de provedores
+        </a>
+      </p>
+    {% endif %}
+  {% else %}
+    <p>Sem informações de streaming para este título no Brasil.</p>
+  {% endif %}
+
+  <hr>
+  <p><small>Fonte: TMDB • ID: {{ movie.tmdb_id }}</small></p>
+{% endblock %}
