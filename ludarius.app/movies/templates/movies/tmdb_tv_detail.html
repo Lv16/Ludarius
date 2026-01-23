@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}{{ tv.name }} | Ludarius{% endblock %}
+
+{% block content %}
+<a href="{% url 'home' %}">← Voltar</a>
+
+<h2>{{ tv.name }}</h2>
+
+{% if tv.original_name and tv.original_name != tv.name %}
+  <p><strong>Nome original:</strong> {{ tv.original_name }}</p>
+{% endif %}
+
+{% if tv.first_air_date %}
+  <p><strong>Início:</strong> {{ tv.first_air_date }}</p>
+{% endif %}
+
+{% if tv.last_air_date %}
+  <p><strong>Último episódio:</strong> {{ tv.last_air_date }}</p>
+{% endif %}
+
+{% if tv.status %}
+  <p><strong>Status:</strong> {{ tv.status }}</p>
+{% endif %}
+
+{% if tv.number_of_seasons %}
+  <p><strong>Temporadas:</strong> {{ tv.number_of_seasons }}</p>
+{% endif %}
+
+{% if tv.number_of_episodes %}
+  <p><strong>Episódios:</strong> {{ tv.number_of_episodes }}</p>
+{% endif %}
+
+{% if tv.genres %}
+  <p><strong>Gêneros:</strong> {{ tv.genres|join:", " }}</p>
+{% endif %}
+
+{% if tv.rating %}
+  <p><strong>Nota:</strong> {{ tv.rating }}</p>
+{% endif %}
+
+{% if tv.poster_url %}
+  <img src="{{ tv.poster_url }}" alt="Poster de {{ tv.name }}" width="220">
+{% endif %}
+
+{% if tv.overview %}
+  <hr>
+  <p><strong>Sinopse:</strong></p>
+  <p>{{ tv.overview }}</p>
+{% endif %}
+
+<hr>
+<h3>Onde assistir (Brasil)</h3>
+
+{% if providers.flatrate or providers.rent or providers.buy %}
+  {% if providers.flatrate %}
+    <p><strong>Incluso na assinatura</strong></p>
+    <ul>
+      {% for p in providers.flatrate %}
+        <li>
+          {% if p.logo_url %}
+            <img src="{{ p.logo_url }}" alt="{{ p.name }}" width="28" style="vertical-align: middle;">
+          {% endif %}
+          {{ p.name }}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  {% if providers.rent %}
+    <p><strong>Aluguel</strong></p>
+    <ul>
+      {% for p in providers.rent %}
+        <li>
+          {% if p.logo_url %}
+            <img src="{{ p.logo_url }}" alt="{{ p.name }}" width="28" style="vertical-align: middle;">
+          {% endif %}
+          {{ p.name }}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  {% if providers.buy %}
+    <p><strong>Compra</strong></p>
+    <ul>
+      {% for p in providers.buy %}
+        <li>
+          {% if p.logo_url %}
+            <img src="{{ p.logo_url }}" alt="{{ p.name }}" width="28" style="vertical-align: middle;">
+          {% endif %}
+          {{ p.name }}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  {% if providers.link %}
+    <p><a href="{{ providers.link }}" target="_blank" rel="noopener">Abrir página de provedores</a></p>
+  {% endif %}
+{% else %}
+  <p>Sem informações de streaming para esta série no Brasil.</p>
+{% endif %}
+
+<hr>
+<h3>Comentários</h3>
+
+{% if user.is_authenticated %}
+  <form method="post" action="{% url 'add_tmdb_tv_comment' tv.tmdb_id %}">
+    {% csrf_token %}
+    {{ comment_form.text }}
+    <br>
+    <button type="submit">Publicar</button>
+  </form>
+
+  <hr>
+
+  <ul>
+    {% for c in comments %}
+      <li>
+        <strong>{{ c.user.username }}</strong>
+        em {{ c.created_at|date:"d/m/Y H:i" }}:
+        <p>{{ c.text }}</p>
+      </li>
+    {% empty %}
+      <li>Não há comentários para esta série.</li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>Você precisa estar logado para ver e escrever comentários.</p>
+{% endif %}
+
+<hr>
+<p><small>Fonte: TMDB • ID: {{ tv.tmdb_id }}</small></p>
+{% endblock %}

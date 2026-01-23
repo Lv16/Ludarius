@@ -95,5 +95,33 @@
   {% endif %}
 
   <hr>
+  <h3>Comentários</h3>
+
+  {% if user.is_authenticated %}
+    <form method="post" action="{% url 'add_tmdb_movie_comment' movie.tmdb_id %}">
+      {% csrf_token %}
+      {{ comment_form.text }}
+      <br>
+      <button type="submit">Publicar</button>
+    </form>
+
+    <hr>
+
+    <ul>
+      {% for c in comments %}
+        <li>
+          <strong>{{ c.user.username }}</strong>
+          em {{ c.created_at|date:"d/m/Y H:i" }}:
+          <p>{{ c.text }}</p>
+        </li>
+      {% empty %}
+        <li>Não há comentários para este filme.</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Você precisa estar logado para ver e escrever comentários.</p>
+  {% endif %}
+
+  <hr>
   <p><small>Fonte: TMDB • ID: {{ movie.tmdb_id }}</small></p>
 {% endblock %}

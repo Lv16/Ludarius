@@ -10,7 +10,7 @@
   <input
     type="text"
     name="q"
-    placeholder="Buscar por título"
+    placeholder="Buscar mídia (filmes, séries, animes)..."
     value="{{ q|default:'' }}"
     autocomplete="off"
   />
@@ -21,51 +21,82 @@
   {% endif %}
 </form>
 
-<hr>
+{% if not q %}
+  <hr>
+  <h2>Em alta hoje</h2>
 
-<h2>Filmes cadastrados</h2>
-
-<ul>
-  {% for movie in movies %}
-    <li>
-      <a href="{% url 'movie_detail' movie.id %}">
-        {{ movie.title }}
-      </a>
-      {% if movie.rating %} — Nota: {{ movie.rating }}{% endif %}
-    </li>
-  {% empty %}
-    {% if q %}
-      <li>Nenhum filme encontrado para “{{ q }}”.</li>
-    {% else %}
-      <li>Nenhum filme cadastrado.</li>
-    {% endif %}
-  {% endfor %}
-</ul>
-
-<hr>
-
-<h2>Resultados do TMDB</h2>
-
-{% if q %}
+  <h3>Filmes</h3>
   <ul>
-    {% for r in tmdb_results %}
+    {% for r in trending_movies %}
       <li>
         {% if r.poster_url %}
           <img src="{{ r.poster_url }}" alt="Poster" width="50" style="vertical-align: middle;">
         {% endif %}
         <a href="{% url 'tmdb_movie_detail' r.tmdb_id %}">
-            <strong>{{ r.title }}</strong>
+          <strong>{{ r.title }}</strong>
         </a>
         {% if r.release_date %} ({{ r.release_date }}){% endif %}
         {% if r.rating %} — Nota: {{ r.rating }}{% endif %}
-        <span> — TMDB</span>
+        <span> — Filme</span>
       </li>
     {% empty %}
-      <li>Nenhum resultado encontrado no TMDB para “{{ q }}”.</li>
+      <li>Não foi possível carregar os filmes em alta agora.</li>
     {% endfor %}
   </ul>
-{% else %}
-  <p>Digite algo na busca para consultar o TMDB.</p>
+
+  <h3>Séries / Animes</h3>
+  <ul>
+    {% for r in trending_tv %}
+      <li>
+        {% if r.poster_url %}
+          <img src="{{ r.poster_url }}" alt="Poster" width="50" style="vertical-align: middle;">
+        {% endif %}
+        <a href="{% url 'tmdb_tv_detail' r.tmdb_id %}">
+          <strong>{{ r.name }}</strong>
+        </a>
+        {% if r.first_air_date %} ({{ r.first_air_date }}){% endif %}
+        {% if r.rating %} — Nota: {{ r.rating }}{% endif %}
+        <span> — Série</span>
+      </li>
+    {% empty %}
+      <li>Não foi possível carregar as séries em alta agora.</li>
+    {% endfor %}
+  </ul>
+
+  <hr>
+  <p>Dica: use a busca para encontrar filmes, séries e animes.</p>
+{% endif %}
+
+{% if q %}
+  <hr>
+  <h2>Resultados</h2>
+
+  <ul>
+    {% for r in results %}
+      <li>
+        {% if r.poster_url %}
+          <img src="{{ r.poster_url }}" alt="Poster" width="50" style="vertical-align: middle;">
+        {% endif %}
+
+        {% if r.media_type == "movie" %}
+          <a href="{% url 'tmdb_movie_detail' r.tmdb_id %}">
+            <strong>{{ r.title }}</strong>
+          </a>
+          <span> — Filme</span>
+        {% elif r.media_type == "tv" %}
+          <a href="{% url 'tmdb_tv_detail' r.tmdb_id %}">
+            <strong>{{ r.title }}</strong>
+          </a>
+          <span> — Série/Anime</span>
+        {% endif %}
+
+        {% if r.date %} ({{ r.date }}){% endif %}
+        {% if r.rating %} — Nota: {{ r.rating }}{% endif %}
+      </li>
+    {% empty %}
+      <li>Nenhum resultado encontrado para “{{ q }}”.</li>
+    {% endfor %}
+  </ul>
 {% endif %}
 
 {% endblock %}
