@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Minha atividade | Ludarius{% endblock %}
+
+{% block content %}
+<h2>Minha atividade</h2>
+
+<p>
+  <a href="{% url 'my_activity' %}?tab=comments"{% if tab == "comments" %} style="text-decoration: underline;"{% endif %}>
+    Meus comentários
+  </a>
+  |
+  <span style="opacity: 0.6;">Assistidos (em breve)</span>
+  |
+  <span style="opacity: 0.6;">Favoritos (em breve)</span>
+</p>
+
+<hr>
+
+{% if tab == "comments" %}
+  <h3>Meus comentários</h3>
+
+  <ul>
+    {% for it in items %}
+      <li>
+        <a href="{% url it.detail_url_name it.tmdb_id %}">
+          <strong>{{ it.title }}</strong>
+        </a>
+        {% if it.media_type == "movie" %}
+          <span> — Filme</span>
+        {% else %}
+          <span> — Série/Anime</span>
+        {% endif %}
+        <br>
+        <small>{{ it.created_at|date:"d/m/Y H:i" }}</small>
+        <p>{{ it.text }}</p>
+      </li>
+      <hr>
+    {% empty %}
+      <li>Você ainda não fez comentários.</li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>Essa aba ainda não foi implementada.</p>
+{% endif %}
+{% endblock %}

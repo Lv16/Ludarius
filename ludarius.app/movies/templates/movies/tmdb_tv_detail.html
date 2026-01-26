@@ -5,6 +5,14 @@
 <a href="{% url 'home' %}">← Voltar</a>
 
 <h2>{{ tv.name }}</h2>
+  <div
+    id="media-meta"
+    data-media-type="tv"
+    data-tmdb-id="{{ tv.tmdb_id }}"
+    data-title="{{ tv.name|escape }}"
+    data-poster="{{ tv.poster_url|default:'' }}"
+    style="display:none;"> 
+  </div>
 
 {% if tv.original_name and tv.original_name != tv.name %}
   <p><strong>Nome original:</strong> {{ tv.original_name }}</p>

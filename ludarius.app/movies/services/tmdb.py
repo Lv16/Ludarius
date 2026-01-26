@@ -1,8 +1,11 @@
 import requests 
 from django.conf import settings
+from django.core.cache import cache
+import hashlib
 
 BASE_URL = "https://api.themoviedb.org/3"
 IMG_BASE = "https://image.tmdb.org/t/p/w500"
+TMDB_TIMEOUT = 8
 
 def _img(path: str | None) -> str:
     if not path:
@@ -10,6 +13,18 @@ def _img(path: str | None) -> str:
     return f"{IMG_BASE}{path}"
 
 def search_multi(query: str, page: int = 1) -> list[dict]:
+    q = (query or "").strip().lower()
+    if not q:
+        return []
+
+    # cache curto (3 min). pode ajustar pra 120s ou 300s.
+    qhash = hashlib.md5(q.encode("utf-8")).hexdigest()
+    cache_key = f"tmdb:search:multi:ptbr:p{page}:{qhash}"
+
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     url = f"{BASE_URL}/search/multi"
     params = {
         "api_key": settings.TMDB_API_KEY,
@@ -18,7 +33,7 @@ def search_multi(query: str, page: int = 1) -> list[dict]:
         "page": page,
         "include_adult": "false",
     }
-    res = requests.get(url, params=params)
+    res = requests.get(url, params=params, timeout=8)
     res.raise_for_status()
     data = res.json()
 
@@ -26,7 +41,7 @@ def search_multi(query: str, page: int = 1) -> list[dict]:
     for r in data.get("results", []):
         media_type = r.get("media_type")
         if media_type not in ("movie", "tv"):
-            continue  # ignora pessoas etc.
+            continue
 
         if media_type == "movie":
             results.append({
@@ -47,7 +62,9 @@ def search_multi(query: str, page: int = 1) -> list[dict]:
                 "poster_url": _img(r.get("poster_path")),
             })
 
+    cache.set(cache_key, results, 60 * 3)  # 3 minutos
     return results
+
 
 
 def search_movies(query, page=1):
@@ -59,7 +76,7 @@ def search_movies(query, page=1):
         "page": page,
         "include_adult": False,
     }
-    response = requests.get(url, params=params)
+    response = requests.get(url, params=params, timeout=TMDB_TIMEOUT)
     response.raise_for_status()
     data = response.json()
     
@@ -82,7 +99,7 @@ def get_movie_details(tmdb_id: int) -> dict:
         "api_key": settings.TMDB_API_KEY,
         "language": "pt-BR",
     }
-    res = requests.get(url, params=params)
+    res = requests.get(url, params=params, timeout=TMDB_TIMEOUT)
     res.raise_for_status()
     r = res.json()
     
@@ -102,7 +119,7 @@ def get_movie_details(tmdb_id: int) -> dict:
 def get_movie_watch_providers(tmdb_id: int, region: str = "BR") -> dict:
     url = f"{BASE_URL}/movie/{tmdb_id}/watch/providers"
     params = {"api_key": settings.TMDB_API_KEY}
-    res = requests.get(url, params=params)
+    res = requests.get(url, params=params, timeout=TMDB_TIMEOUT)
     res.raise_for_status()
     data = res.json()
     
@@ -135,7 +152,7 @@ def search_tv(query: str, page: int = 1) -> list[dict]:
         "page": page,
         "include_adult": False,
     }
-    res = requests.get(url, params=params)
+    res = requests.get(url, params=params, timeout=TMDB_TIMEOUT)
     res.raise_for_status()
     data = res.json()
     results = []
@@ -156,7 +173,7 @@ def get_tv_details(tmdb_id: int) -> dict:
         "api_key": settings.TMDB_API_KEY,
         "language": "pt-BR",
     }
-    res = requests.get(url, params=params)
+    res = requests.get(url, params=params, timeout=TMDB_TIMEOUT)
     res.raise_for_status()
     r = res.json()
     
@@ -179,7 +196,7 @@ def get_tv_details(tmdb_id: int) -> dict:
 def get_tv_watch_providers(tmdb_id: int, region: str = "BR") -> dict:
     url = f"{BASE_URL}/tv/{tmdb_id}/watch/providers"
     params = {"api_key": settings.TMDB_API_KEY}
-    res = requests.get(url, params=params)
+    res = requests.get(url, params=params, timeout=TMDB_TIMEOUT)
     res.raise_for_status()
     data = res.json()
     results = data.get("results", {}) or {}
@@ -202,7 +219,7 @@ def get_tv_watch_providers(tmdb_id: int, region: str = "BR") -> dict:
 def get_trending_tv() -> list[dict]:
     url = f"{BASE_URL}/trending/tv/day"
     params = {"api_key": settings.TMDB_API_KEY, "language": "pt-BR"}
-    res = requests.get(url, params=params)
+    res = requests.get(url, params=params, timeout=TMDB_TIMEOUT)
     res.raise_for_status()
     data = res.json()
 
@@ -217,17 +234,18 @@ def get_trending_tv() -> list[dict]:
         })
     return results
 
-def get_trending_movies(region: str = "BR") -> list[dict]:
-    
+def get_trending_movies(region: str = "BR", language: str = "pt-BR") -> list[dict]:
+    key = f"tmdb:trending:movie:day:{language.lower()}:{region.lower()}"
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+
     url = f"{BASE_URL}/trending/movie/day"
-    params = {
-        "api_key": settings.TMDB_API_KEY,
-        "language": "pt-BR",
-    }
-    res = requests.get(url, params=params)
+    params = {"api_key": settings.TMDB_API_KEY, "language": language}
+    res = requests.get(url, params=params, timeout=TMDB_TIMEOUT)
     res.raise_for_status()
+
     data = res.json()
-    
     results = []
     for r in data.get("results", []):
         results.append({
@@ -237,4 +255,7 @@ def get_trending_movies(region: str = "BR") -> list[dict]:
             "rating": r.get("vote_average"),
             "poster_url": _img(r.get("poster_path")),
         })
+
+    cache.set(key, results, 60 * 10)
     return results
+

@@ -1,9 +1,13 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Ludarius{% endblock %}</title>
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <link rel="shortcut icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon">
+    <meta name="theme-color" content="#0b0b10">
 </head>
 <body>
     <header>
@@ -24,5 +28,21 @@
         {% block content %}
         {% endblock %}
     </main>
+    <button id="pwa-install-btn" style="display: none;">
+    Instalar Ludarius
+    </button>
+
+    <div id="sw-update" style="display:none; padding:10px; border:1px solid #ccc; margin:10px 0;">
+        <span>Nova versão disponível.</span>
+        <button id="sw-update-btn">Atualizar</button>
+    </div>
+
+    <script>
+    if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("{% static 'service-worker.js' %}");
+    }
+    </script>
+    <script src="{% static 'base.js' %}"></script>
+
 </body>
 </html>

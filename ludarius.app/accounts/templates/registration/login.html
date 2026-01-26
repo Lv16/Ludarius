@@ -8,14 +8,16 @@
 <body>
   <h1>Entrar</h1>
 
+  {% load socialaccount %}
+
   {% if form.errors %}
-    <p style="color: red;">Usuário ou senha inválidos.</p>
+    <p style="color: red;">UsuÃ¡rio ou senha invÃ¡lidos.</p>
   {% endif %}
 
   <form method="post">
     {% csrf_token %}
     <div>
-      <label>Usuário</label><br>
+      <label>UsuÃ¡rio</label><br>
       {{ form.username }}
     </div>
 
@@ -30,6 +32,10 @@
 
     <button type="submit">Entrar</button>
   </form>
+
+  <p>
+    <a href="{% provider_login_url 'google' %}">Entrar com Google</a>
+  </p>
 
   <p><a href="/">Voltar</a></p>
 </body>

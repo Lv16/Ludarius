@@ -16,16 +16,23 @@ from .services.tmdb import (
 
 def home(request):
     q = request.GET.get("q", "").strip()
+    media_type = request.GET.get("type", "all").strip().lower()  # all | movie | tv
 
     results = []
     trending_movies = []
     trending_tv = []
+    trending_feed = []
 
     if q:
         try:
             results = search_multi(q)
         except Exception:
             results = []
+
+        # filtro também na busca (opcional, mas útil)
+        if media_type in ("movie", "tv"):
+            results = [r for r in results if r.get("media_type") == media_type]
+
     else:
         try:
             trending_movies = get_trending_movies()
@@ -37,12 +44,42 @@ def home(request):
         except Exception:
             trending_tv = []
 
+        # Normaliza e mistura num feed único
+        for m in trending_movies:
+            trending_feed.append({
+                "media_type": "movie",
+                "tmdb_id": m.get("tmdb_id"),
+                "title": m.get("title", ""),
+                "date": m.get("release_date", ""),
+                "rating": m.get("rating"),
+                "poster_url": m.get("poster_url", ""),
+            })
+
+        for t in trending_tv:
+            trending_feed.append({
+                "media_type": "tv",
+                "tmdb_id": t.get("tmdb_id"),
+                "title": t.get("name", ""),
+                "date": t.get("first_air_date", ""),
+                "rating": t.get("rating"),
+                "poster_url": t.get("poster_url", ""),
+            })
+
+        if media_type in ("movie", "tv"):
+            trending_feed = [x for x in trending_feed if x["media_type"] == media_type]
+
+        trending_feed.sort(key=lambda x: (x["rating"] is None, -(x["rating"] or 0)))
+
+        trending_feed = trending_feed[:30]
+
     return render(request, "movies/home.html", {
         "q": q,
+        "type": media_type,          # pro template destacar o filtro
         "results": results,
-        "trending_movies": trending_movies,
-        "trending_tv": trending_tv,
+        "trending_feed": trending_feed,
     })
+
+
 
 def movie_detail(request, movie_id):
     movie = get_object_or_404(Movie, id=movie_id)

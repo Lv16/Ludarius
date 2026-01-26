@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Início | Ludarius{% endblock %}
 
@@ -22,44 +23,58 @@
 </form>
 
 {% if not q %}
+{% if not q %}
+  <p>
+    <a href="/"{% if media_type == "all" %} style="text-decoration: underline;"{% endif %}>Em alta (Tudo)</a>
+    |
+    <a href="/?type=movie"{% if media_type == "movie" %} style="text-decoration: underline;"{% endif %}>Em alta (Filmes)</a>
+    |
+    <a href="/?type=tv"{% if media_type == "tv" %} style="text-decoration: underline;"{% endif %}>Em alta (Séries/Animes)</a>
+  </p>
+{% endif %}
+
   <hr>
+
+  <div id="last-seen-section" style="display:none;">
+    <h2>Continuar vendo</h2>
+    <ul id="last-seen-list"></ul>
+
+    <p> 
+      <a href="#" id="last-seen-clear">Limpar histórico</a>
+    </p>
+    <ul id="last-seen-list"></ul>
+    <hr>
+  </div>
+
+
+    <hr>
+
   <h2>Em alta hoje</h2>
 
-  <h3>Filmes</h3>
   <ul>
-    {% for r in trending_movies %}
+    {% for r in trending_feed %}
       <li>
         {% if r.poster_url %}
           <img src="{{ r.poster_url }}" alt="Poster" width="50" style="vertical-align: middle;">
         {% endif %}
-        <a href="{% url 'tmdb_movie_detail' r.tmdb_id %}">
-          <strong>{{ r.title }}</strong>
-        </a>
-        {% if r.release_date %} ({{ r.release_date }}){% endif %}
-        {% if r.rating %} — Nota: {{ r.rating }}{% endif %}
-        <span> — Filme</span>
-      </li>
-    {% empty %}
-      <li>Não foi possível carregar os filmes em alta agora.</li>
-    {% endfor %}
-  </ul>
 
-  <h3>Séries / Animes</h3>
-  <ul>
-    {% for r in trending_tv %}
-      <li>
-        {% if r.poster_url %}
-          <img src="{{ r.poster_url }}" alt="Poster" width="50" style="vertical-align: middle;">
+        {% if r.media_type == "movie" %}
+          <a href="{% url 'tmdb_movie_detail' r.tmdb_id %}">
+            <strong>{{ r.title }}</strong>
+          </a>
+          <span> — Filme</span>
+        {% elif r.media_type == "tv" %}
+          <a href="{% url 'tmdb_tv_detail' r.tmdb_id %}">
+            <strong>{{ r.title }}</strong>
+          </a>
+          <span> — Série/Anime</span>
         {% endif %}
-        <a href="{% url 'tmdb_tv_detail' r.tmdb_id %}">
-          <strong>{{ r.name }}</strong>
-        </a>
-        {% if r.first_air_date %} ({{ r.first_air_date }}){% endif %}
+
+        {% if r.date %} ({{ r.date }}){% endif %}
         {% if r.rating %} — Nota: {{ r.rating }}{% endif %}
-        <span> — Série</span>
       </li>
     {% empty %}
-      <li>Não foi possível carregar as séries em alta agora.</li>
+      <li>Não foi possível carregar o feed em alta agora.</li>
     {% endfor %}
   </ul>
 
@@ -99,4 +114,7 @@
   </ul>
 {% endif %}
 
+<script src="{% static 'js/home.js' %}"></script>
+
 {% endblock %}
+

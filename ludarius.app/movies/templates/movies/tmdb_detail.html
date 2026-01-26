@@ -6,6 +6,15 @@
   <a href="{% url 'home' %}">← Voltar</a>
 
   <h2>{{ movie.title }}</h2>
+  <div
+    id="media-meta"
+    data-media-type="movie"
+    data-tmdb-id="{{ movie.tmdb_id }}"
+    data-title="{{ movie.title|escape }}"
+    data-poster="{{ movie.poster_url|default:'' }}"
+    style="display:none;"> 
+  </div>
+
 
   {% if movie.original_title and movie.original_title != movie.title %}
     <p><strong>Título original:</strong> {{ movie.original_title }}</p>
