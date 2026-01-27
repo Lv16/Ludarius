@@ -1,28 +1,42 @@
-const CACHE_NAME = "ludarius-v3";
+const CACHE_NAME = "ludarius-v4";
+
 const ASSETS = [
   "/",
   "/offline/",
   "/static/manifest.json",
+
+  "/static/icons/icon-192.png",
+  "/static/icons/icon-512.png",
+
+  "/static/js/base.js",
+  "/static/css/base.css"
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+
+      await Promise.allSettled(
+        ASSETS.map((url) => cache.add(url))
+      );
+
+      self.skipWaiting();
+    })()
   );
 });
+
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
-      // limpa caches antigos (se já não tiver)
       const keys = await caches.keys();
       await Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
-
-      // pega controle das abas abertas sem precisar fechar
       await self.clients.claim();
     })()
   );
 });
+
 
 
 self.addEventListener("fetch", (event) => {
@@ -32,15 +46,22 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(req.url);
 
-  // Cache-first para estáticos
-  if (url.pathname.startsWith("/static/")) {
-    event.respondWith(
-      caches.match(req).then((cached) => cached || fetch(req))
-    );
-    return;
-  }
+if (url.pathname.startsWith("/static/")) {
+  event.respondWith(
+    caches.match(req).then((cached) => {
+      if (cached) return cached;
 
-  // Network-first para páginas (inclui /tmdb/movie/... e /tmdb/tv/...)
+      return fetch(req).then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+        return res;
+      });
+    })
+  );
+  return;
+}
+
+
   event.respondWith(
     fetch(req)
       .then((res) => {
@@ -53,16 +74,6 @@ self.addEventListener("fetch", (event) => {
       )
   );
 });
-
- event.respondWith(
-  fetch(req)
-    .then((res) => {
-      const copy = res.clone();
-      caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
-      return res;
-    })
-    .catch(() => caches.match(req).then((cached) => cached || caches.match("/offline/")))
-);
 
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SKIP_WAITING") {

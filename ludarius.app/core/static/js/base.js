@@ -84,34 +84,63 @@
 
   if (!list.length) return;
 
-  const render = () => {
-    if (!list.length) {
-      section.style.display = "none";
-      return;
-    }
+const render = () => {
+  if (!list.length) {
+    section.style.display = "none";
+    return;
+  }
 
-    listEl.innerHTML = list.map((x) => {
-      const label = x.media_type === "movie" ? "Filme" : "Série/Anime";
-      const safeTitle = (x.title || `${label} • TMDB ${x.tmdb_id}`);
-      const posterHtml = x.poster_url
-        ? `<img src="${x.poster_url}" alt="Poster" width="36" style="vertical-align: middle;"> `
-        : "";
+  listEl.innerHTML = list.map((x) => {
+    const label = x.media_type === "movie" ? "Filme" : "Série/Anime";
+    const safeTitle = (x.title || `${label} • TMDB ${x.tmdb_id}`);
+    const posterHtml = x.poster_url
+      ? `<img src="${x.poster_url}" alt="Poster" width="36" style="vertical-align: middle;"> `
+      : "";
 
-      return `
-        <li>
-          ${posterHtml}
-          <a href="${x.url}">
-            <strong>${safeTitle}</strong>
-          </a>
-          <span> — ${label}</span>
-        </li>
-      `;
-    }).join("");
+    return `
+      <li>
+        ${posterHtml}
+        <a href="${x.url}">
+          <strong>${safeTitle}</strong>
+        </a>
+        <span> — ${label}</span>
 
-    section.style.display = "block";
-  };
+        <button
+          type="button"
+          class="last-seen-remove"
+          data-media-type="${x.media_type}"
+          data-tmdb-id="${x.tmdb_id}"
+          style="margin-left: 8px;"
+          aria-label="Remover do histórico"
+          title="Remover"
+        >
+          ×
+        </button>
+      </li>
+    `;
+  }).join("");
+
+  section.style.display = "block";
+};
+
 
   render();
+
+  listEl.addEventListener("click", (e) => {
+  const btn = e.target.closest(".last-seen-remove");
+  if (!btn) return;
+
+  const mt = btn.dataset.mediaType;
+  const id = btn.dataset.tmdbId;
+
+  list = list.filter(x => !(x.media_type === mt && String(x.tmdb_id) === String(id)));
+  localStorage.setItem(key, JSON.stringify(list));
+  if (!confirm("Remover do histórico?")) return;
+  render();
+});
+
+
+
 
   if (clearBtn) {
     clearBtn.addEventListener("click", (e) => {
@@ -141,7 +170,13 @@
     };
   };
 
-  const reg = await navigator.serviceWorker.register("/static/service-worker.js");
+  let reg;
+  try {
+    reg = await navigator.serviceWorker.register("/static/service-worker.js");
+  } catch (err) {
+    console.warn("Falha ao registrar o service worker.", err);
+    return;
+  }
 
   reg.addEventListener("updatefound", () => {
     const newWorker = reg.installing;

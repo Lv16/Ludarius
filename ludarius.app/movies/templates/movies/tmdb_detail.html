@@ -104,6 +104,32 @@
   {% endif %}
 
   <hr>
+
+
+<h3>Sua avaliação</h3>
+
+{% if user.is_authenticated %}
+  <form method="post" action="{% url 'rate_movie' movie.tmdb_id %}">
+    {% csrf_token %}
+
+    <label for="id_score">Nota (1 a 10)</label><br>
+    {{ rating_form.score }} 
+    <button type="submit">Salvar</button>
+
+    {% if rating_form.score.errors %}
+      <div>{{ rating_form.score.errors }}</div>
+    {% endif %}
+  </form>
+
+  {% if user_rating %}
+    <p>Sua nota atual: <strong>{{ user_rating.score }}</strong></p>
+  {% endif %}
+{% else %}
+  <p>Você precisa estar logado para avaliar.</p>
+{% endif %}
+
+  <hr>
+
   <h3>Comentários</h3>
 
   {% if user.is_authenticated %}

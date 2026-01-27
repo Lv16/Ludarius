@@ -1,8 +1,9 @@
 from django.shortcuts import render, get_object_or_404
-
 from comments.forms import CommentForm
 from comments.models import Comment
 from .models import Movie
+from reviews.forms import RatingForm
+from reviews.models import Rating
 from .services.tmdb import (
     get_movie_details,
     get_movie_watch_providers,
@@ -94,7 +95,12 @@ def movie_detail(request, movie_id):
     form = None
     
     if request.user.is_authenticated:
-        comments = movie.comments.select_related("user").all()
+        comments = (
+            Comment.objects
+            .filter(media_type="movie", tmdb_id=movie_id)
+            .select_related("user")
+            .all()
+        )
         form = CommentForm()
         
     return render(request, "movies/detail.html", {
@@ -106,44 +112,64 @@ def movie_detail(request, movie_id):
     
 def tmdb_movie_detail(request, tmdb_id):
     movie = get_movie_details(tmdb_id)
+    providers = get_movie_watch_providers(tmdb_id)
 
-    try:
-        providers = get_movie_watch_providers(tmdb_id, region="BR")
-    except Exception:
-        providers = {"link": "", "flatrate": [], "rent": [], "buy": []}
-
+    rating_form = RatingForm()
+    user_rating = None
     comments = None
     comment_form = None
 
     if request.user.is_authenticated:
-        comments = Comment.objects.filter(media_type="movie", tmdb_id=tmdb_id).select_related("user")
+        user_rating = Rating.objects.filter(
+            user=request.user,
+            media_type="movie",
+            tmdb_id=tmdb_id
+        ).first()
+        comments = (
+            Comment.objects
+            .filter(media_type="movie", tmdb_id=tmdb_id)
+            .select_related("user")
+            .all()
+        )
         comment_form = CommentForm()
 
     return render(request, "movies/tmdb_detail.html", {
         "movie": movie,
         "providers": providers,
+        "rating_form": rating_form,
+        "user_rating": user_rating,
         "comments": comments,
         "comment_form": comment_form,
     })
-
+    
 def tmdb_tv_detail(request, tmdb_id):
     tv = get_tv_details(tmdb_id)
+    providers = get_tv_watch_providers(tmdb_id)
 
-    try:
-        providers = get_tv_watch_providers(tmdb_id, region="BR")
-    except Exception:
-        providers = {"link": "", "flatrate": [], "rent": [], "buy": []}
-
+    rating_form = RatingForm()
+    user_rating = None
     comments = None
     comment_form = None
 
     if request.user.is_authenticated:
-        comments = Comment.objects.filter(media_type="tv", tmdb_id=tmdb_id).select_related("user")
+        user_rating = Rating.objects.filter(
+            user=request.user,
+            media_type="tv",
+            tmdb_id=tmdb_id
+        ).first()
+        comments = (
+            Comment.objects
+            .filter(media_type="tv", tmdb_id=tmdb_id)
+            .select_related("user")
+            .all()
+        )
         comment_form = CommentForm()
 
     return render(request, "movies/tmdb_tv_detail.html", {
         "tv": tv,
         "providers": providers,
+        "rating_form": rating_form,
+        "user_rating": user_rating,
         "comments": comments,
         "comment_form": comment_form,
     })

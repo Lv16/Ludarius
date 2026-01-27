@@ -28,6 +28,8 @@ urlpatterns = [
     path("accounts/", include("accounts.urls")),
     path("accounts/", include("allauth.urls")),
     path("offline/", TemplateView.as_view(template_name="movies/offline.html"), name="offline"),
+    path("", include("reviews.urls")),
+
 ]
 
 if settings.DEBUG:

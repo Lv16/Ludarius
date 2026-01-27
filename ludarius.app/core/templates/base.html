@@ -37,12 +37,7 @@
         <button id="sw-update-btn">Atualizar</button>
     </div>
 
-    <script>
-    if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("{% static 'service-worker.js' %}");
-    }
-    </script>
-    <script src="{% static 'base.js' %}"></script>
+    <script src="{% static 'js/base.js' %}"></script>
 
 </body>
 </html>
