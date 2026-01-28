@@ -18,6 +18,7 @@
   if (!list.length) return;
 
   // monta HTML simples
+  
   listEl.innerHTML = list.map((x) => {
     const label = x.media_type === "movie" ? "Filme" : "Série/Anime";
     return `

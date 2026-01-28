@@ -1,0 +1,6 @@
+Django>=6.0.1
+requests
+python-dotenv
+django-allauth
+PyJWT
+cryptography
