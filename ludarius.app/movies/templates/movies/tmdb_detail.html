@@ -40,6 +40,19 @@
     <img src="{{ movie.poster_url }}" alt="Poster de {{ movie.title }}" width="220">
   {% endif %}
 
+  {% if user.is_authenticated %}
+    <form method="post" action="{% url 'favorite_movie' movie.tmdb_id %}">
+      {% csrf_token %}
+      {% if is_favorite %}
+        <button type="submit">Remover dos favoritos</button>
+      {% else %}
+        <button type="submit">Adicionar aos favoritos</button>
+      {% endif %}
+    </form>
+  {% else %}
+    <p>Faça login para favoritar.</p>
+  {% endif %}
+
   {% if movie.overview %}
     <hr>
     <p><strong>Sinopse:</strong></p>
@@ -105,6 +118,18 @@
 
   <hr>
 
+  <h3>Avaliação dos usuários (Ludarius)</h3>
+
+  {% if ratings_count and ratings_count > 0 %}
+    <p>
+      Média: <strong>{{ ratings_avg|floatformat:1 }}</strong>/10
+      ({{ ratings_count }} avaliação{{ ratings_count|pluralize:"ões" }})
+    </p>
+  {% else %}
+    <p>Ainda não há avaliações de usuários para este título.</p>
+  {% endif %}
+
+  <hr>
 
 <h3>Sua avaliação</h3>
 

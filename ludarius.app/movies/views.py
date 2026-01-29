@@ -2,8 +2,11 @@ from django.shortcuts import render, get_object_or_404
 from comments.forms import CommentForm
 from comments.models import Comment
 from .models import Movie
+from favorites.models import Favorite
 from reviews.forms import RatingForm
 from reviews.models import Rating
+from django.db.models import Avg, Count
+from django.core.cache import cache
 from .services.tmdb import (
     get_movie_details,
     get_movie_watch_providers,
@@ -114,10 +117,26 @@ def tmdb_movie_detail(request, tmdb_id):
     movie = get_movie_details(tmdb_id)
     providers = get_movie_watch_providers(tmdb_id)
 
+    # Média Ludarius (cache curto)
+    avg_key = f"ratings:avg:movie:{tmdb_id}"
+    avg_data = cache.get(avg_key)
+
+    if avg_data is None:
+        agg = Rating.objects.filter(media_type="movie", tmdb_id=tmdb_id).aggregate(
+            avg=Avg("score"),
+            count=Count("id"),
+        )
+        avg_data = {
+            "avg": agg["avg"],
+            "count": agg["count"],
+        }
+        cache.set(avg_key, avg_data, 60 * 5)  # 5 min
+
     rating_form = RatingForm()
     user_rating = None
     comments = None
     comment_form = None
+    is_favorite = False
 
     if request.user.is_authenticated:
         user_rating = Rating.objects.filter(
@@ -125,6 +144,11 @@ def tmdb_movie_detail(request, tmdb_id):
             media_type="movie",
             tmdb_id=tmdb_id
         ).first()
+        is_favorite = Favorite.objects.filter(
+            user=request.user,
+            media_type="movie",
+            tmdb_id=tmdb_id
+        ).exists()
         comments = (
             Comment.objects
             .filter(media_type="movie", tmdb_id=tmdb_id)
@@ -136,8 +160,11 @@ def tmdb_movie_detail(request, tmdb_id):
     return render(request, "movies/tmdb_detail.html", {
         "movie": movie,
         "providers": providers,
+        "ratings_avg": avg_data["avg"],
+        "ratings_count": avg_data["count"],
         "rating_form": rating_form,
         "user_rating": user_rating,
+        "is_favorite": is_favorite,
         "comments": comments,
         "comment_form": comment_form,
     })
@@ -146,10 +173,22 @@ def tmdb_tv_detail(request, tmdb_id):
     tv = get_tv_details(tmdb_id)
     providers = get_tv_watch_providers(tmdb_id)
 
+    avg_key = f"ratings:avg:tv:{tmdb_id}"
+    avg_data = cache.get(avg_key)
+
+    if avg_data is None:
+        agg = Rating.objects.filter(media_type="tv", tmdb_id=tmdb_id).aggregate(
+            avg=Avg("score"),
+            count=Count("id"),
+        )
+        avg_data = {"avg": agg["avg"], "count": agg["count"]}
+        cache.set(avg_key, avg_data, 60 * 5)
+
     rating_form = RatingForm()
     user_rating = None
     comments = None
     comment_form = None
+    is_favorite = False
 
     if request.user.is_authenticated:
         user_rating = Rating.objects.filter(
@@ -157,6 +196,11 @@ def tmdb_tv_detail(request, tmdb_id):
             media_type="tv",
             tmdb_id=tmdb_id
         ).first()
+        is_favorite = Favorite.objects.filter(
+            user=request.user,
+            media_type="tv",
+            tmdb_id=tmdb_id
+        ).exists()
         comments = (
             Comment.objects
             .filter(media_type="tv", tmdb_id=tmdb_id)
@@ -168,8 +212,11 @@ def tmdb_tv_detail(request, tmdb_id):
     return render(request, "movies/tmdb_tv_detail.html", {
         "tv": tv,
         "providers": providers,
+        "ratings_avg": avg_data["avg"],
+        "ratings_count": avg_data["count"],
         "rating_form": rating_form,
         "user_rating": user_rating,
+        "is_favorite": is_favorite,
         "comments": comments,
         "comment_form": comment_form,
     })

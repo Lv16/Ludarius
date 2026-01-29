@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'movies',
     'comments',
     'reviews',
+    'favorites',
 ]
 
 MIDDLEWARE = [

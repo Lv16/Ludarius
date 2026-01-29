@@ -29,6 +29,7 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
     path("offline/", TemplateView.as_view(template_name="movies/offline.html"), name="offline"),
     path("", include("reviews.urls")),
+    path("", include("favorites.urls")),
 
 ]
 

@@ -2,11 +2,12 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from comments.models import Comment
 from django.core.cache import cache
+from reviews.models import Rating
 from movies.services.tmdb import get_movie_details, get_tv_details
 
 @login_required
-def my_acconunt(request):
-    return render(request, 'accounts/my_account.html')
+def my_account(request):
+    return render(request, "accounts/my_account.html")
 
 @login_required
 def my_activity(request):
@@ -34,6 +35,25 @@ def my_activity(request):
             })
             
         context["comments"] = items
+
+    if tab == "ratings":
+        ratings = (
+            Rating.objects
+            .filter(user=request.user)
+            .order_by("-updated_at")[:50]
+        )
+
+        items = []
+        for r in ratings:
+            items.append({
+                "media_type": r.media_type,
+                "tmdb_id": r.tmdb_id,
+                "score": r.score,
+                "updated_at": r.updated_at,
+                "detail_url_name": "tmdb_movie_detail" if r.media_type == "movie" else "tmdb_tv_detail",
+            })
+
+        context["ratings_items"] = items
     
     return render(request, 'accounts/my_activity.html', context)
 

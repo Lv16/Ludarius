@@ -10,6 +10,10 @@
     Meus comentários
   </a>
   |
+  <a href="{% url 'my_activity' %}?tab=ratings"{% if tab == "ratings" %} style="text-decoration: underline;"{% endif %}>
+    Minhas avaliações
+  </a>
+  |
   <span style="opacity: 0.6;">Assistidos (em breve)</span>
   |
   <span style="opacity: 0.6;">Favoritos (em breve)</span>
@@ -38,6 +42,33 @@
       <hr>
     {% empty %}
       <li>Você ainda não fez comentários.</li>
+    {% endfor %}
+  </ul>
+{% elif tab == "ratings" %}
+  <h3>Minhas avaliações</h3>
+
+  <ul>
+    {% for it in ratings_items %}
+      <li>
+        <a href="{% url it.detail_url_name it.tmdb_id %}">
+          <strong>
+            {% if it.title %}{{ it.title }}{% else %}TMDB {{ it.tmdb_id }}{% endif %}
+          </strong>
+        </a>
+
+        {% if it.media_type == "movie" %}
+          <span> — Filme</span>
+        {% else %}
+          <span> — Série/Anime</span>
+        {% endif %}
+
+        <span> — Minha nota: <strong>{{ it.score }}</strong>/10</span>
+        <br>
+        <small>Atualizado em {{ it.updated_at|date:"d/m/Y H:i" }}</small>
+      </li>
+      <hr>
+    {% empty %}
+      <li>Você ainda não avaliou nenhum título.</li>
     {% endfor %}
   </ul>
 {% else %}
