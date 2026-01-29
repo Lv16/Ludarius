@@ -4,13 +4,13 @@ from django.core.cache import cache
 import hashlib
 
 BASE_URL = "https://api.themoviedb.org/3"
-IMG_BASE = "https://image.tmdb.org/t/p/w500"
+IMG_BASE = "/tmdb/image/w500"
 TMDB_TIMEOUT = 8
 
 def _img(path: str | None) -> str:
     if not path:
         return ""
-    return f"{IMG_BASE}{path}"
+    return f"{IMG_BASE}/{path.lstrip('/')}"
 
 def search_multi(query: str, page: int = 1) -> list[dict]:
     q = (query or "").strip().lower()

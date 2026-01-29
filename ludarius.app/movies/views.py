@@ -1,4 +1,6 @@
 from django.shortcuts import render, get_object_or_404
+from django.http import HttpResponse, HttpResponseBadRequest
+import requests
 from comments.forms import CommentForm
 from comments.models import Comment
 from .models import Movie
@@ -134,6 +136,7 @@ def tmdb_movie_detail(request, tmdb_id):
 
     rating_form = RatingForm()
     user_rating = None
+    user_comment = None
     comments = None
     comment_form = None
     is_favorite = False
@@ -155,6 +158,12 @@ def tmdb_movie_detail(request, tmdb_id):
             .select_related("user")
             .all()
         )
+        user_comment = (
+            Comment.objects
+            .filter(media_type="movie", tmdb_id=tmdb_id, user=request.user)
+            .order_by("-created_at")
+            .first()
+        )
         comment_form = CommentForm()
 
     return render(request, "movies/tmdb_detail.html", {
@@ -167,6 +176,7 @@ def tmdb_movie_detail(request, tmdb_id):
         "is_favorite": is_favorite,
         "comments": comments,
         "comment_form": comment_form,
+        "user_comment": user_comment,
     })
     
 def tmdb_tv_detail(request, tmdb_id):
@@ -186,6 +196,7 @@ def tmdb_tv_detail(request, tmdb_id):
 
     rating_form = RatingForm()
     user_rating = None
+    user_comment = None
     comments = None
     comment_form = None
     is_favorite = False
@@ -207,6 +218,12 @@ def tmdb_tv_detail(request, tmdb_id):
             .select_related("user")
             .all()
         )
+        user_comment = (
+            Comment.objects
+            .filter(media_type="tv", tmdb_id=tmdb_id, user=request.user)
+            .order_by("-created_at")
+            .first()
+        )
         comment_form = CommentForm()
 
     return render(request, "movies/tmdb_tv_detail.html", {
@@ -219,4 +236,26 @@ def tmdb_tv_detail(request, tmdb_id):
         "is_favorite": is_favorite,
         "comments": comments,
         "comment_form": comment_form,
+        "user_comment": user_comment,
     })
+
+
+def tmdb_image_proxy(request, size: str, image_path: str):
+    allowed_sizes = {"w92", "w154", "w185", "w342", "w500", "w780", "original"}
+    if size not in allowed_sizes:
+        return HttpResponseBadRequest("invalid_size")
+    safe_path = (image_path or "").lstrip("/")
+    if not safe_path:
+        return HttpResponseBadRequest("invalid_path")
+
+    url = f"https://image.tmdb.org/t/p/{size}/{safe_path}"
+    try:
+        res = requests.get(url, stream=True, timeout=8)
+        if res.status_code != 200:
+            return HttpResponse(status=res.status_code)
+        content_type = res.headers.get("Content-Type", "image/jpeg")
+        response = HttpResponse(res.content, content_type=content_type)
+        response["Cache-Control"] = "public, max-age=86400"
+        return response
+    except requests.RequestException:
+        return HttpResponse(status=502)

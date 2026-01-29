@@ -1,5 +1,10 @@
 {% extends "base.html" %}
-{% block title %}{{ tv.name }} | Ludarius{% endblock %}
+{% load static %}
+{% block og_title %}{{ tv.name }} | Ludarius{% endblock %}
+{% block og_description %}{% if tv.overview %}{{ tv.overview|truncatechars:160 }}{% else %}Veja onde assistir e as avaliações no Ludarius.{% endif %}{% endblock %}
+{% block og_url %}{{ request.build_absolute_uri }}{% endblock %}
+{% block og_image %}{% if tv.poster_url %}{{ tv.poster_url }}{% else %}{% static 'icons/icon-512.png' %}{% endif %}{% endblock %}
+
 
 {% block content %}
 <a href="{% url 'home' %}">← Voltar</a>
@@ -121,6 +126,20 @@
 {% else %}
   <p>Sem informações de streaming para esta série no Brasil.</p>
 {% endif %}
+
+<hr>
+
+  <button
+    type="button"
+    class="share-btn"
+    data-title="{{ tv.name|escape }}"
+    data-url="{{ request.build_absolute_uri }}"
+    data-poster="{{ tv.poster_url|default:'' }}"
+    data-rating="{% if user_rating %}{{ user_rating.score }}{% elif ratings_avg %}{{ ratings_avg|floatformat:1 }}{% endif %}"
+    data-comment="{% if user_comment %}{{ user_comment.text|truncatechars:220|escape }}{% endif %}"
+  >
+    Compartilhar
+  </button>
 
 <hr>
 <h3>Avaliação dos usuários (Ludarius)</h3>
