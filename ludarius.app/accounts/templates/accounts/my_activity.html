@@ -4,6 +4,9 @@
 
 {% block content %}
 <h2>Minha atividade</h2>
+<p>
+  <a href="{% url 'public_profile' user.username %}">Ver meu perfil público</a>
+</p>
 
 <p>
   <a href="{% url 'my_activity' %}?tab=comments"{% if tab == "comments" %} style="text-decoration: underline;"{% endif %}>

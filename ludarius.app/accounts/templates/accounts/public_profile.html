@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}@{{ profile_user.username }} | Ludarius{% endblock %}
+
+{% block content %}
+
+<h2>@{{ profile_user.username }}</h2>
+<p>
+  <small>No Ludarius desde {{ profile_user.date_joined|date:"d/m/Y" }}</small>
+</p>
+
+<hr>
+
+<p>
+  Comentários: <strong>{{ stats.comments_count }}</strong> |
+  Avaliações: <strong>{{ stats.ratings_count }}</strong>
+</p>
+
+<hr>
+
+<h3>Últimos comentários</h3>
+
+<ul>
+  {% for c in last_comments %}
+    <li>
+      <small>{{ c.created_at|date:"d/m/Y H:i" }}</small><br>
+
+      {% if c.media_type == "movie" %}
+        <a href="{% url 'tmdb_movie_detail' c.tmdb_id %}">
+          <strong>Filme • {% if c.title %}{{ c.title }}{% else %}TMDB {{ c.tmdb_id }}{% endif %}</strong>
+        </a>
+      {% else %}
+        <a href="{% url 'tmdb_tv_detail' c.tmdb_id %}">
+          <strong>Série/Anime • {% if c.title %}{{ c.title }}{% else %}TMDB {{ c.tmdb_id }}{% endif %}</strong>
+        </a>
+      {% endif %}
+
+      <p>{{ c.text }}</p>
+    </li>
+    <hr>
+  {% empty %}
+    <li>Este usuário ainda não comentou.</li>
+  {% endfor %}
+</ul>
+
+<hr>
+
+<h3>Últimas avaliações</h3>
+
+<ul>
+  {% for r in last_ratings %}
+    <li>
+      <small>{{ r.updated_at|date:"d/m/Y H:i" }}</small><br>
+
+      {% if r.media_type == "movie" %}
+        <a href="{% url 'tmdb_movie_detail' r.tmdb_id %}">
+          <strong>Filme • {% if r.title %}{{ r.title }}{% else %}TMDB {{ r.tmdb_id }}{% endif %}</strong>
+        </a>
+      {% else %}
+        <a href="{% url 'tmdb_tv_detail' r.tmdb_id %}">
+          <strong>Série/Anime • {% if r.title %}{{ r.title }}{% else %}TMDB {{ r.tmdb_id }}{% endif %}</strong>
+        </a>
+      {% endif %}
+
+      <p>Nota: <strong>{{ r.score }}</strong>/10</p>
+    </li>
+    <hr>
+  {% empty %}
+    <li>Este usuário ainda não avaliou nenhum título.</li>
+  {% endfor %}
+</ul>
+
+{% endblock %}

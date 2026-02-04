@@ -194,7 +194,10 @@
   <ul>
     {% for c in comments %}
       <li>
-        <strong>{{ c.user.username }}</strong>
+        <a href="{% url 'public_profile' c.user.username %}">
+            <strong>@{{ c.user.username }}</strong>
+        </a>
+
         em {{ c.created_at|date:"d/m/Y H:i" }}:
         <p>{{ c.text }}</p>
       </li>
