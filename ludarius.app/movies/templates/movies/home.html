@@ -1,7 +1,7 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% load static %}
 
-{% block title %}Início | Ludarius{% endblock %}
+{% block title %}Inicio | Ludarius{% endblock %}
 
 {% block content %}
 
@@ -11,7 +11,7 @@
   <input
     type="text"
     name="q"
-    placeholder="Buscar mídia (filmes, séries, animes)..."
+    placeholder="Buscar midia (filmes, series, animes)..."
     value="{{ q|default:'' }}"
     autocomplete="off"
   />
@@ -23,15 +23,13 @@
 </form>
 
 {% if not q %}
-{% if not q %}
   <p>
-    <a href="/"{% if media_type == "all" %} style="text-decoration: underline;"{% endif %}>Em alta (Tudo)</a>
+    <a href="/"{% if type == "all" %} style="text-decoration: underline;"{% endif %}>Em alta (Tudo)</a>
     |
-    <a href="/?type=movie"{% if media_type == "movie" %} style="text-decoration: underline;"{% endif %}>Em alta (Filmes)</a>
+    <a href="/?type=movie"{% if type == "movie" %} style="text-decoration: underline;"{% endif %}>Em alta (Filmes)</a>
     |
-    <a href="/?type=tv"{% if media_type == "tv" %} style="text-decoration: underline;"{% endif %}>Em alta (Séries/Animes)</a>
+    <a href="/?type=tv"{% if type == "tv" %} style="text-decoration: underline;"{% endif %}>Em alta (Series/Animes)</a>
   </p>
-{% endif %}
 
   <hr>
 
@@ -39,15 +37,14 @@
     <h2>Continuar vendo</h2>
     <ul id="last-seen-list"></ul>
 
-    <p> 
-      <a href="#" id="last-seen-clear">Limpar histórico</a>
+    <p>
+      <a href="#" id="last-seen-clear">Limpar historico</a>
     </p>
     <ul id="last-seen-list"></ul>
     <hr>
   </div>
 
-
-    <hr>
+  <hr>
 
   <h2>Em alta hoje</h2>
 
@@ -62,24 +59,24 @@
           <a href="{% url 'tmdb_movie_detail' r.tmdb_id %}">
             <strong>{{ r.title }}</strong>
           </a>
-          <span> — Filme</span>
+          <span> - Filme</span>
         {% elif r.media_type == "tv" %}
           <a href="{% url 'tmdb_tv_detail' r.tmdb_id %}">
             <strong>{{ r.title }}</strong>
           </a>
-          <span> — Série/Anime</span>
+          <span> - Serie/Anime</span>
         {% endif %}
 
         {% if r.date %} ({{ r.date }}){% endif %}
-        {% if r.rating %} — Nota: {{ r.rating }}{% endif %}
+        {% if r.rating %} - Nota: {{ r.rating }}{% endif %}
       </li>
     {% empty %}
-      <li>Não foi possível carregar o feed em alta agora.</li>
+      <li>Nao foi possivel carregar o feed em alta agora.</li>
     {% endfor %}
   </ul>
 
   <hr>
-  <p>Dica: use a busca para encontrar filmes, séries e animes.</p>
+  <p>Dica: use a busca para encontrar filmes, series e animes.</p>
 {% endif %}
 
 {% if q %}
@@ -97,24 +94,37 @@
           <a href="{% url 'tmdb_movie_detail' r.tmdb_id %}">
             <strong>{{ r.title }}</strong>
           </a>
-          <span> — Filme</span>
+          <span> - Filme</span>
         {% elif r.media_type == "tv" %}
           <a href="{% url 'tmdb_tv_detail' r.tmdb_id %}">
             <strong>{{ r.title }}</strong>
           </a>
-          <span> — Série/Anime</span>
+          <span> - Serie/Anime</span>
         {% endif %}
 
         {% if r.date %} ({{ r.date }}){% endif %}
-        {% if r.rating %} — Nota: {{ r.rating }}{% endif %}
+        {% if r.rating %} - Nota: {{ r.rating }}{% endif %}
       </li>
     {% empty %}
-      <li>Nenhum resultado encontrado para “{{ q }}”.</li>
+      <li>Nenhum resultado encontrado para "{{ q }}".</li>
     {% endfor %}
   </ul>
+
+  <hr>
+
+  <p>
+    {% if has_prev %}
+      <a href="/?q={{ q|urlencode }}&page={{ page|add:"-1" }}{% if type and type != "all" %}&type={{ type }}{% endif %}">← Anterior</a>
+    {% endif %}
+
+    <span>Pagina {{ page }} de {{ total_pages }}</span>
+
+    {% if has_next %}
+      <a href="/?q={{ q|urlencode }}&page={{ page|add:"1" }}{% if type and type != "all" %}&type={{ type }}{% endif %}">Proxima →</a>
+    {% endif %}
+  </p>
 {% endif %}
 
 <script src="{% static 'js/home.js' %}"></script>
 
 {% endblock %}
-

@@ -22,6 +22,14 @@
 
 </head>
 <body>
+    {% if messages %}
+        <ul>
+            {% for message in messages %}
+            <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
     <header>
         <h1><a href="/" style="text-decoration: none;">Ludarius</a></h1>
         <nav>

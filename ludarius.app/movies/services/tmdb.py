@@ -12,12 +12,12 @@ def _img(path: str | None) -> str:
         return ""
     return f"{IMG_BASE}/{path.lstrip('/')}"
 
-def search_multi(query: str, page: int = 1) -> list[dict]:
+def search_multi(query: str, page: int = 1) -> dict:
     q = (query or "").strip().lower()
     if not q:
-        return []
+        return {"results": [], "page": 1, "total_pages": 1}
 
-    # cache curto (3 min). pode ajustar pra 120s ou 300s.
+    # cache curto (3 min)
     qhash = hashlib.md5(q.encode("utf-8")).hexdigest()
     cache_key = f"tmdb:search:multi:ptbr:p{page}:{qhash}"
 
@@ -62,8 +62,14 @@ def search_multi(query: str, page: int = 1) -> list[dict]:
                 "poster_url": _img(r.get("poster_path")),
             })
 
-    cache.set(cache_key, results, 60 * 3)  # 3 minutos
-    return results
+    payload = {
+        "results": results,
+        "page": data.get("page", page),
+        "total_pages": data.get("total_pages", 1),
+    }
+
+    cache.set(cache_key, payload, 60 * 3)
+    return payload
 
 
 

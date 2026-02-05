@@ -1,7 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.shortcuts import redirect
-from django.http import HttpResponse
 from .forms import CommentForm
 from .models import Comment
 from django.core.cache import cache
@@ -13,7 +12,8 @@ def add_comment(request, movie_id):
 
     key = f"rl:comment:{request.user.id}"
     if cache.get(key):
-        return HttpResponse("Espere alguns segundos para comentar novamente.", status=429)
+        messages.warning(request, "Espere alguns segundos para comentar novamente.")
+        return redirect("movie_detail", movie_id=movie_id)
     cache.set(key, 1, 10)  # 10 segundos
 
     form = CommentForm(request.POST)
@@ -40,7 +40,8 @@ def add_tmdb_movie_comment(request, tmdb_id):
 
     key = f"rl:comment:{request.user.id}"
     if cache.get(key):
-        return HttpResponse("Espere alguns segundos para comentar novamente.", status=429)
+        messages.warning(request, "Espere alguns segundos para comentar novamente.")
+        return redirect("tmdb_movie_detail", tmdb_id=tmdb_id)
     cache.set(key, 1, 10)  # 10 segundos
 
     form = CommentForm(request.POST)
@@ -64,7 +65,8 @@ def add_tmdb_tv_comment(request, tmdb_id: int):
     if request.method == "POST":
         key = f"rl:comment:{request.user.id}"
         if cache.get(key):
-            return HttpResponse("Espere alguns segundos para comentar novamente.", status=429)
+            messages.warning(request, "Espere alguns segundos para comentar novamente.")
+            return redirect("tmdb_tv_detail", tmdb_id=tmdb_id)
         cache.set(key, 1, 10)  # 10 segundos
 
         form = CommentForm(request.POST)

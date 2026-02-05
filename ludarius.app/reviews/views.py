@@ -1,6 +1,6 @@
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.shortcuts import redirect
-from django.http import HttpResponse
 from django.core.cache import cache
 from .forms import RatingForm
 from .models import Rating
@@ -10,7 +10,8 @@ def rate_movie(request, tmdb_id: int):
     if request.method == "POST":
         key = f"rl:rating:{request.user.id}"
         if cache.get(key):
-            return HttpResponse("Espere alguns segundos para avaliar novamente.", status=429)
+            messages.warning(request, "Espere alguns segundos para avaliar novamente.")
+            return redirect("tmdb_movie_detail", tmdb_id=tmdb_id)
         cache.set(key, 1, 5)  # 5 segundos
 
         form = RatingForm(request.POST)
@@ -29,7 +30,8 @@ def rate_tv(request, tmdb_id: int):
     if request.method == "POST":
         key = f"rl:rating:{request.user.id}"
         if cache.get(key):
-            return HttpResponse("Espere alguns segundos para avaliar novamente.", status=429)
+            messages.warning(request, "Espere alguns segundos para avaliar novamente.")
+            return redirect("tmdb_tv_detail", tmdb_id=tmdb_id)
         cache.set(key, 1, 5)  # 5 segundos
 
         form = RatingForm(request.POST)

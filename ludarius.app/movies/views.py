@@ -23,17 +23,34 @@ from .services.tmdb import (
 def home(request):
     q = request.GET.get("q", "").strip()
     media_type = request.GET.get("type", "all").strip().lower()  # all | movie | tv
+    try:
+        page = int(request.GET.get("page", 1) or 1)
+    except (TypeError, ValueError):
+        page = 1
+    page = max(page, 1)
 
     results = []
     trending_movies = []
     trending_tv = []
     trending_feed = []
+    total_pages = 1
+    has_prev = False
+    has_next = False
 
     if q:
         try:
-            results = search_multi(q)
+            data = search_multi(q, page=page)
+            results = data["results"]
+            page = data["page"]
+            total_pages = data["total_pages"]
+            has_prev = page > 1
+            has_next = page < total_pages
         except Exception:
             results = []
+            page = 1
+            total_pages = 1
+            has_prev = False
+            has_next = False
 
         # filtro também na busca (opcional, mas útil)
         if media_type in ("movie", "tv"):
@@ -83,6 +100,10 @@ def home(request):
         "type": media_type,          # pro template destacar o filtro
         "results": results,
         "trending_feed": trending_feed,
+        "page": page,
+        "total_pages": total_pages,
+        "has_prev": has_prev,
+        "has_next": has_next,
     })
 
 
