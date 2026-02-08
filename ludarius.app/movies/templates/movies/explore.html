@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Explorar | Ludarius{% endblock %}
+
+{% block content %}
+<h2>Explorar</h2>
+<p>Descubra filmes e séries/animes populares e bem avaliados.</p>
+
+<hr>
+
+<h3>Populares — Filmes</h3>
+<ul>
+  {% for r in popular_movies %}
+    <li>
+      {% if r.poster_url %}
+        <img src="{{ r.poster_url }}" alt="Poster" width="50" style="vertical-align: middle;">
+      {% endif %}
+      <a href="{% url 'tmdb_movie_detail' r.tmdb_id %}">
+        <strong>{{ r.title }}</strong>
+      </a>
+      {% if r.release_date %} ({{ r.release_date }}){% endif %}
+      {% if r.rating %} — Nota: {{ r.rating }}{% endif %}
+    </li>
+  {% empty %}
+    <li>Não foi possível carregar.</li>
+  {% endfor %}
+</ul>
+
+<hr>
+
+<h3>Populares — Séries/Animes</h3>
+<ul>
+  {% for r in popular_tv %}
+    <li>
+      {% if r.poster_url %}
+        <img src="{{ r.poster_url }}" alt="Poster" width="50" style="vertical-align: middle;">
+      {% endif %}
+      <a href="{% url 'tmdb_tv_detail' r.tmdb_id %}">
+        <strong>{{ r.name }}</strong>
+      </a>
+      {% if r.first_air_date %} ({{ r.first_air_date }}){% endif %}
+      {% if r.rating %} — Nota: {{ r.rating }}{% endif %}
+    </li>
+  {% empty %}
+    <li>Não foi possível carregar.</li>
+  {% endfor %}
+</ul>
+
+<hr>
+
+<h3>Melhores avaliados — Filmes</h3>
+<ul>
+  {% for r in top_movies %}
+    <li>
+      {% if r.poster_url %}
+        <img src="{{ r.poster_url }}" alt="Poster" width="50" style="vertical-align: middle;">
+      {% endif %}
+      <a href="{% url 'tmdb_movie_detail' r.tmdb_id %}">
+        <strong>{{ r.title }}</strong>
+      </a>
+      {% if r.release_date %} ({{ r.release_date }}){% endif %}
+      {% if r.rating %} — Nota: {{ r.rating }}{% endif %}
+    </li>
+  {% empty %}
+    <li>Não foi possível carregar.</li>
+  {% endfor %}
+</ul>
+
+<hr>
+
+<h3>Melhores avaliados — Séries/Animes</h3>
+<ul>
+  {% for r in top_tv %}
+    <li>
+      {% if r.poster_url %}
+        <img src="{{ r.poster_url }}" alt="Poster" width="50" style="vertical-align: middle;">
+      {% endif %}
+      <a href="{% url 'tmdb_tv_detail' r.tmdb_id %}">
+        <strong>{{ r.name }}</strong>
+      </a>
+      {% if r.first_air_date %} ({{ r.first_air_date }}){% endif %}
+      {% if r.rating %} — Nota: {{ r.rating }}{% endif %}
+    </li>
+  {% empty %}
+    <li>Não foi possível carregar.</li>
+  {% endfor %}
+</ul>
+
+{% endblock %}

@@ -21,7 +21,7 @@
 <h3>Últimos comentários</h3>
 
 <ul>
-  {% for c in last_comments %}
+  {% for c in comments_page %}
     <li>
       <small>{{ c.created_at|date:"d/m/Y H:i" }}</small><br>
 
@@ -43,12 +43,24 @@
   {% endfor %}
 </ul>
 
+<p>
+  {% if comments_page.has_previous %}
+    <a href="?page_comments={{ comments_page.previous_page_number }}&page_ratings={{ ratings_page.number }}">? Anterior</a>
+  {% endif %}
+
+  <span>P?gina {{ comments_page.number }} de {{ comments_page.paginator.num_pages }}</span>
+
+  {% if comments_page.has_next %}
+    <a href="?page_comments={{ comments_page.next_page_number }}&page_ratings={{ ratings_page.number }}">Pr?xima ?</a>
+  {% endif %}
+</p>
+
 <hr>
 
 <h3>Últimas avaliações</h3>
 
 <ul>
-  {% for r in last_ratings %}
+  {% for r in ratings_page %}
     <li>
       <small>{{ r.updated_at|date:"d/m/Y H:i" }}</small><br>
 

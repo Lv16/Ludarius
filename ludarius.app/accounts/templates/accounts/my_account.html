@@ -13,7 +13,14 @@
 
 <p>Ações</p>
 <ul>
-    <li><a href="{% url 'logout' %}">Sair</a></li>
+    <li>
+        <form action="{% url 'logout' %}" method="post" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" style="background:none;border:none;padding:0;margin:0;color:inherit;cursor:pointer;">
+                Sair
+            </button>
+        </form>
+    </li>
     <li><a href="{% url 'my_activity' %}">Minha atividade</a></li>
 </ul>
 

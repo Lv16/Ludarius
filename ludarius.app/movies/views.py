@@ -12,6 +12,10 @@ from django.core.cache import cache
 from .services.tmdb import (
     get_movie_details,
     get_movie_watch_providers,
+    get_popular_movies,
+    get_popular_tv,
+    get_top_rated_movies,
+    get_top_rated_tv,
     get_trending_movies,
     get_trending_tv,
     get_tv_details,
@@ -104,6 +108,39 @@ def home(request):
         "total_pages": total_pages,
         "has_prev": has_prev,
         "has_next": has_next,
+    })
+
+def explore(request):
+    popular_movies = []
+    popular_tv = []
+    top_movies = []
+    top_tv = []
+
+    try:
+        popular_movies = get_popular_movies()
+    except Exception:
+        popular_movies = []
+
+    try:
+        popular_tv = get_popular_tv()
+    except Exception:
+        popular_tv = []
+
+    try:
+        top_movies = get_top_rated_movies()
+    except Exception:
+        top_movies = []
+
+    try:
+        top_tv = get_top_rated_tv()
+    except Exception:
+        top_tv = []
+
+    return render(request, "movies/explore.html", {
+        "popular_movies": popular_movies[:20],
+        "popular_tv": popular_tv[:20],
+        "top_movies": top_movies[:20],
+        "top_tv": top_tv[:20],
     })
 
 

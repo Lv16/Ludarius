@@ -27,26 +27,40 @@
 {% if tab == "comments" %}
   <h3>Meus comentários</h3>
 
-  <ul>
-    {% for it in items %}
-      <li>
-        <a href="{% url it.detail_url_name it.tmdb_id %}">
-          <strong>{{ it.title }}</strong>
-        </a>
-        {% if it.media_type == "movie" %}
-          <span> — Filme</span>
-        {% else %}
-          <span> — Série/Anime</span>
-        {% endif %}
-        <br>
-        <small>{{ it.created_at|date:"d/m/Y H:i" }}</small>
-        <p>{{ it.text }}</p>
-      </li>
-      <hr>
-    {% empty %}
-      <li>Você ainda não fez comentários.</li>
-    {% endfor %}
-  </ul>
+  {% with context_page=page_obj %}
+    <ul>
+      {% for it in comments %}
+        <li>
+          <a href="{% url it.detail_url_name it.tmdb_id %}">
+            <strong>{{ it.title }}</strong>
+          </a>
+          {% if it.media_type == "movie" %}
+            <span> 🎬 Filme</span>
+          {% else %}
+            <span> 📺 Série/Anime</span>
+          {% endif %}
+          <br>
+          <small>{{ it.created_at|date:"d/m/Y H:i" }}</small>
+          <p>{{ it.text }}</p>
+        </li>
+        <hr>
+      {% empty %}
+        <li>Você ainda não fez comentários.</li>
+      {% endfor %}
+    </ul>
+
+    <p>
+      {% if context_page.has_previous %}
+        <a href="{% url 'my_activity' %}?tab={{ tab }}&page={{ context_page.previous_page_number }}">‹ Anterior</a>
+      {% endif %}
+
+      <span>Página {{ context_page.number }} de {{ context_page.paginator.num_pages }}</span>
+
+      {% if context_page.has_next %}
+        <a href="{% url 'my_activity' %}?tab={{ tab }}&page={{ context_page.next_page_number }}">Próxima ›</a>
+      {% endif %}
+    </p>
+  {% endwith %}
 {% elif tab == "ratings" %}
   <h3>Minhas avaliações</h3>
 
@@ -60,12 +74,12 @@
         </a>
 
         {% if it.media_type == "movie" %}
-          <span> — Filme</span>
+          <span> 🎬 Filme</span>
         {% else %}
-          <span> — Série/Anime</span>
+          <span> 📺 Série/Anime</span>
         {% endif %}
 
-        <span> — Minha nota: <strong>{{ it.score }}</strong>/10</span>
+        <span> ⭐ Minha nota: <strong>{{ it.score }}</strong>/10</span>
         <br>
         <small>Atualizado em {{ it.updated_at|date:"d/m/Y H:i" }}</small>
       </li>

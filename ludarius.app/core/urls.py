@@ -16,12 +16,14 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from accounts import views as accounts_views
 from django.views.generic import TemplateView
 from django.conf import settings
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("accounts/logout/", accounts_views.logout_view, name="logout"),
     path("", include('movies.urls')),
     path("", include("comments.urls")),
     path("accounts/", include("django.contrib.auth.urls")),

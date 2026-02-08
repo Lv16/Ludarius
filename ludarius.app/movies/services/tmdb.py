@@ -265,3 +265,103 @@ def get_trending_movies(region: str = "BR", language: str = "pt-BR") -> list[dic
     cache.set(key, results, 60 * 10)
     return results
 
+def get_popular_movies() -> list[dict]:
+    key = "tmdb:popular:movie:ptbr"
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+
+    url = f"{BASE_URL}/movie/popular"
+    params = {"api_key": settings.TMDB_API_KEY, "language": "pt-BR", "page": 1}
+    res = requests.get(url, params=params, timeout=TMDB_TIMEOUT)
+    res.raise_for_status()
+    data = res.json()
+
+    results = []
+    for r in data.get("results", []):
+        results.append({
+            "tmdb_id": r.get("id"),
+            "title": r.get("title") or "",
+            "release_date": r.get("release_date") or "",
+            "rating": r.get("vote_average"),
+            "poster_url": _img(r.get("poster_path")),
+        })
+
+    cache.set(key, results, 60 * 30)
+    return results
+
+def get_popular_tv() -> list[dict]:
+    key = "tmdb:popular:tv:ptbr"
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+
+    url = f"{BASE_URL}/tv/popular"
+    params = {"api_key": settings.TMDB_API_KEY, "language": "pt-BR", "page": 1}
+    res = requests.get(url, params=params, timeout=TMDB_TIMEOUT)
+    res.raise_for_status()
+    data = res.json()
+
+    results = []
+    for r in data.get("results", []):
+        results.append({
+            "tmdb_id": r.get("id"),
+            "name": r.get("name") or "",
+            "first_air_date": r.get("first_air_date") or "",
+            "rating": r.get("vote_average"),
+            "poster_url": _img(r.get("poster_path")),
+        })
+
+    cache.set(key, results, 60 * 30)
+    return results
+
+def get_top_rated_movies() -> list[dict]:
+    key = "tmdb:toprated:movie:ptbr"
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+
+    url = f"{BASE_URL}/movie/top_rated"
+    params = {"api_key": settings.TMDB_API_KEY, "language": "pt-BR", "page": 1}
+    res = requests.get(url, params=params, timeout=TMDB_TIMEOUT)
+    res.raise_for_status()
+    data = res.json()
+
+    results = []
+    for r in data.get("results", []):
+        results.append({
+            "tmdb_id": r.get("id"),
+            "title": r.get("title") or "",
+            "release_date": r.get("release_date") or "",
+            "rating": r.get("vote_average"),
+            "poster_url": _img(r.get("poster_path")),
+        })
+
+    cache.set(key, results, 60 * 30)
+    return results
+
+def get_top_rated_tv() -> list[dict]:
+    key = "tmdb:toprated:tv:ptbr"
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+
+    url = f"{BASE_URL}/tv/top_rated"
+    params = {"api_key": settings.TMDB_API_KEY, "language": "pt-BR", "page": 1}
+    res = requests.get(url, params=params, timeout=TMDB_TIMEOUT)
+    res.raise_for_status()
+    data = res.json()
+
+    results = []
+    for r in data.get("results", []):
+        results.append({
+            "tmdb_id": r.get("id"),
+            "name": r.get("name") or "",
+            "first_air_date": r.get("first_air_date") or "",
+            "rating": r.get("vote_average"),
+            "poster_url": _img(r.get("poster_path")),
+        })
+
+    cache.set(key, results, 60 * 30)
+    return results
+

@@ -1,31 +1,39 @@
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from comments.models import Comment
 from django.core.cache import cache
+from django.core.paginator import Paginator
 from reviews.models import Rating
 from movies.services.tmdb import get_movie_details, get_tv_details
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
+from django.contrib.auth import logout
 
 @login_required
 def my_account(request):
     return render(request, "accounts/my_account.html")
 
+def logout_view(request):
+    logout(request)
+    return redirect("home")
+
 @login_required
 def my_activity(request):
-    tab = (request.GET.get("tab") or "comments").strip().lower()
+    tab = request.GET.get("tab", "comments").strip().lower()
+    page = int(request.GET.get("page", 1) or 1)
     
     context = {"tab": tab}
     
     if tab == "comments":
-        comments = (
+        qs = (
             Comment.objects
             .filter(user=request.user)
-            .order_by("-created_at")[:50]
+            .order_by("-created_at")
         )
+        page_obj = Paginator(qs, 10).get_page(page)
         
         items = []
-        for c in comments:
+        for c in page_obj:
             items.append({
                 "id": c.id,
                 "media_type": c.media_type,
@@ -37,6 +45,7 @@ def my_activity(request):
             })
             
         context["comments"] = items
+        context["page_obj"] = page_obj
 
     if tab == "ratings":
         ratings = (
@@ -96,32 +105,15 @@ def public_profile(request, username: str):
         "ratings_count": ratings_qs.count(),
     }
 
-    last_comments = []
-    for c in comments_qs[:10]:
-        last_comments.append({
-            "id": c.id,
-            "media_type": c.media_type,
-            "tmdb_id": c.tmdb_id,
-            "title": _get_media_title(c.media_type, c.tmdb_id),
-            "text": c.text,
-            "created_at": c.created_at,
-            "detail_url_name": "tmdb_movie_detail" if c.media_type == "movie" else "tmdb_tv_detail",
-        })
+    page_comments = int(request.GET.get("page_comments", 1) or 1)
+    page_ratings = int(request.GET.get("page_ratings", 1) or 1)
 
-    last_ratings = []
-    for r in ratings_qs[:10]:
-        last_ratings.append({
-            "media_type": r.media_type,
-            "tmdb_id": r.tmdb_id,
-            "title": _get_media_title(r.media_type, r.tmdb_id),
-            "score": r.score,
-            "updated_at": r.updated_at,
-            "detail_url_name": "tmdb_movie_detail" if r.media_type == "movie" else "tmdb_tv_detail",
-        })
+    comments_page = Paginator(comments_qs, 10).get_page(page_comments)
+    ratings_page = Paginator(ratings_qs, 10).get_page(page_ratings)
 
     return render(request, "accounts/public_profile.html", {
         "profile_user": profile_user,
         "stats": stats,
-        "last_comments": last_comments,
-        "last_ratings": last_ratings,
+        "comments_page": comments_page,
+        "ratings_page": ratings_page,
     })
