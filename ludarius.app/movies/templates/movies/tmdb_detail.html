@@ -118,8 +118,23 @@
   {% else %}
     <p>Sem informações de streaming para este título no Brasil.</p>
   {% endif %}
-  
-      <hr>
+
+  {% if availabilities %}
+    <hr>
+    <h3>Disponibilidade cadastrada no Ludarius</h3>
+    <ul>
+      {% for a in availabilities %}
+        <li>
+          <strong>{{ a.platform.name }}</strong>
+          - {{ a.get_access_type_display }}
+          {% if a.price %} - R$ {{ a.price }}{% endif %}
+          {% if a.link %} - <a href="{{ a.link }}" target="_blank" rel="noopener">Abrir</a>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <hr>
 
   <button
     type="button"

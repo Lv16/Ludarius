@@ -1,14 +1,16 @@
-from django.shortcuts import render, get_object_or_404
-from django.http import HttpResponse, HttpResponseBadRequest
 import requests
+from django.core.cache import cache
+from django.db.models import Avg, Count
+from django.http import HttpResponse, HttpResponseBadRequest
+from django.shortcuts import get_object_or_404, redirect, render
+
 from comments.forms import CommentForm
 from comments.models import Comment
-from .models import Movie
 from favorites.models import Favorite
 from reviews.forms import RatingForm
 from reviews.models import Rating
-from django.db.models import Avg, Count
-from django.core.cache import cache
+
+from .models import Movie
 from .services.tmdb import (
     get_movie_details,
     get_movie_watch_providers,
@@ -24,9 +26,74 @@ from .services.tmdb import (
 )
 
 
+def _get_local_movie_data(tmdb_id: int):
+    local_movie = (
+        Movie.objects.filter(tmdb_id=tmdb_id)
+        .prefetch_related("availabilities__platform")
+        .first()
+    )
+
+    availabilities = []
+    if local_movie:
+        availabilities = (
+            local_movie.availabilities.select_related("platform")
+            .order_by("platform__name", "access_type")
+        )
+    return local_movie, availabilities
+
+
+def _get_ratings_summary(media_type: str, tmdb_id: int) -> dict:
+    avg_key = f"ratings:avg:{media_type}:{tmdb_id}"
+    avg_data = cache.get(avg_key)
+
+    if avg_data is None:
+        agg = Rating.objects.filter(media_type=media_type, tmdb_id=tmdb_id).aggregate(
+            avg=Avg("score"),
+            count=Count("id"),
+        )
+        avg_data = {"avg": agg["avg"], "count": agg["count"]}
+        cache.set(avg_key, avg_data, 60 * 5)
+    return avg_data
+
+
+def _get_user_media_state(request, media_type: str, tmdb_id: int) -> dict:
+    state = {
+        "user_rating": None,
+        "user_comment": None,
+        "comments": None,
+        "comment_form": None,
+        "is_favorite": False,
+    }
+    if not request.user.is_authenticated:
+        return state
+
+    state["user_rating"] = Rating.objects.filter(
+        user=request.user,
+        media_type=media_type,
+        tmdb_id=tmdb_id,
+    ).first()
+    state["is_favorite"] = Favorite.objects.filter(
+        user=request.user,
+        media_type=media_type,
+        tmdb_id=tmdb_id,
+    ).exists()
+    state["comments"] = (
+        Comment.objects.filter(media_type=media_type, tmdb_id=tmdb_id)
+        .select_related("user")
+        .all()
+    )
+    state["user_comment"] = (
+        Comment.objects.filter(media_type=media_type, tmdb_id=tmdb_id, user=request.user)
+        .order_by("-created_at")
+        .first()
+    )
+    state["comment_form"] = CommentForm()
+    return state
+
+
 def home(request):
     q = request.GET.get("q", "").strip()
-    media_type = request.GET.get("type", "all").strip().lower()  # all | movie | tv
+    media_type = request.GET.get("type", "all").strip().lower()
     try:
         page = int(request.GET.get("page", 1) or 1)
     except (TypeError, ValueError):
@@ -56,10 +123,8 @@ def home(request):
             has_prev = False
             has_next = False
 
-        # filtro também na busca (opcional, mas útil)
         if media_type in ("movie", "tv"):
             results = [r for r in results if r.get("media_type") == media_type]
-
     else:
         try:
             trending_movies = get_trending_movies()
@@ -71,44 +136,51 @@ def home(request):
         except Exception:
             trending_tv = []
 
-        # Normaliza e mistura num feed único
-        for m in trending_movies:
-            trending_feed.append({
-                "media_type": "movie",
-                "tmdb_id": m.get("tmdb_id"),
-                "title": m.get("title", ""),
-                "date": m.get("release_date", ""),
-                "rating": m.get("rating"),
-                "poster_url": m.get("poster_url", ""),
-            })
+        for movie in trending_movies:
+            trending_feed.append(
+                {
+                    "media_type": "movie",
+                    "tmdb_id": movie.get("tmdb_id"),
+                    "title": movie.get("title", ""),
+                    "date": movie.get("release_date", ""),
+                    "rating": movie.get("rating"),
+                    "poster_url": movie.get("poster_url", ""),
+                }
+            )
 
-        for t in trending_tv:
-            trending_feed.append({
-                "media_type": "tv",
-                "tmdb_id": t.get("tmdb_id"),
-                "title": t.get("name", ""),
-                "date": t.get("first_air_date", ""),
-                "rating": t.get("rating"),
-                "poster_url": t.get("poster_url", ""),
-            })
+        for tv in trending_tv:
+            trending_feed.append(
+                {
+                    "media_type": "tv",
+                    "tmdb_id": tv.get("tmdb_id"),
+                    "title": tv.get("name", ""),
+                    "date": tv.get("first_air_date", ""),
+                    "rating": tv.get("rating"),
+                    "poster_url": tv.get("poster_url", ""),
+                }
+            )
 
         if media_type in ("movie", "tv"):
-            trending_feed = [x for x in trending_feed if x["media_type"] == media_type]
+            trending_feed = [item for item in trending_feed if item["media_type"] == media_type]
 
-        trending_feed.sort(key=lambda x: (x["rating"] is None, -(x["rating"] or 0)))
-
+        trending_feed.sort(key=lambda item: (item["rating"] is None, -(item["rating"] or 0)))
         trending_feed = trending_feed[:30]
 
-    return render(request, "movies/home.html", {
-        "q": q,
-        "type": media_type,          # pro template destacar o filtro
-        "results": results,
-        "trending_feed": trending_feed,
-        "page": page,
-        "total_pages": total_pages,
-        "has_prev": has_prev,
-        "has_next": has_next,
-    })
+    return render(
+        request,
+        "movies/home.html",
+        {
+            "q": q,
+            "type": media_type,
+            "results": results,
+            "trending_feed": trending_feed,
+            "page": page,
+            "total_pages": total_pages,
+            "has_prev": has_prev,
+            "has_next": has_next,
+        },
+    )
+
 
 def explore(request):
     popular_movies = []
@@ -136,166 +208,79 @@ def explore(request):
     except Exception:
         top_tv = []
 
-    return render(request, "movies/explore.html", {
-        "popular_movies": popular_movies[:20],
-        "popular_tv": popular_tv[:20],
-        "top_movies": top_movies[:20],
-        "top_tv": top_tv[:20],
-    })
-
+    return render(
+        request,
+        "movies/explore.html",
+        {
+            "popular_movies": popular_movies[:20],
+            "popular_tv": popular_tv[:20],
+            "top_movies": top_movies[:20],
+            "top_tv": top_tv[:20],
+        },
+    )
 
 
 def movie_detail(request, movie_id):
     movie = get_object_or_404(Movie, id=movie_id)
-    
+
+    if movie.tmdb_id:
+        return redirect("tmdb_movie_detail", tmdb_id=movie.tmdb_id)
+
     availabilities = (
-        movie.availabilities
-        .select_related("platform")
-        .order_by("platform__name", "access_type")
+        movie.availabilities.select_related("platform").order_by("platform__name", "access_type")
     )
-    
-    comments = None
-    form = None
-    
-    if request.user.is_authenticated:
-        comments = (
-            Comment.objects
-            .filter(media_type="movie", tmdb_id=movie_id)
-            .select_related("user")
-            .all()
-        )
-        form = CommentForm()
-        
-    return render(request, "movies/detail.html", {
-        "movie": movie,
-        "availabilities": availabilities,
-        "comments": comments,
-        "comment_form": form,
-    })
-    
+
+    return render(
+        request,
+        "movies/detail.html",
+        {
+            "movie": movie,
+            "availabilities": availabilities,
+        },
+    )
+
+
 def tmdb_movie_detail(request, tmdb_id):
     movie = get_movie_details(tmdb_id)
     providers = get_movie_watch_providers(tmdb_id)
+    local_movie, availabilities = _get_local_movie_data(tmdb_id)
+    avg_data = _get_ratings_summary("movie", tmdb_id)
+    user_state = _get_user_media_state(request, "movie", tmdb_id)
 
-    # Média Ludarius (cache curto)
-    avg_key = f"ratings:avg:movie:{tmdb_id}"
-    avg_data = cache.get(avg_key)
+    return render(
+        request,
+        "movies/tmdb_detail.html",
+        {
+            "movie": movie,
+            "providers": providers,
+            "local_movie": local_movie,
+            "availabilities": availabilities,
+            "ratings_avg": avg_data["avg"],
+            "ratings_count": avg_data["count"],
+            "rating_form": RatingForm(),
+            **user_state,
+        },
+    )
 
-    if avg_data is None:
-        agg = Rating.objects.filter(media_type="movie", tmdb_id=tmdb_id).aggregate(
-            avg=Avg("score"),
-            count=Count("id"),
-        )
-        avg_data = {
-            "avg": agg["avg"],
-            "count": agg["count"],
-        }
-        cache.set(avg_key, avg_data, 60 * 5)  # 5 min
 
-    rating_form = RatingForm()
-    user_rating = None
-    user_comment = None
-    comments = None
-    comment_form = None
-    is_favorite = False
-
-    if request.user.is_authenticated:
-        user_rating = Rating.objects.filter(
-            user=request.user,
-            media_type="movie",
-            tmdb_id=tmdb_id
-        ).first()
-        is_favorite = Favorite.objects.filter(
-            user=request.user,
-            media_type="movie",
-            tmdb_id=tmdb_id
-        ).exists()
-        comments = (
-            Comment.objects
-            .filter(media_type="movie", tmdb_id=tmdb_id)
-            .select_related("user")
-            .all()
-        )
-        user_comment = (
-            Comment.objects
-            .filter(media_type="movie", tmdb_id=tmdb_id, user=request.user)
-            .order_by("-created_at")
-            .first()
-        )
-        comment_form = CommentForm()
-
-    return render(request, "movies/tmdb_detail.html", {
-        "movie": movie,
-        "providers": providers,
-        "ratings_avg": avg_data["avg"],
-        "ratings_count": avg_data["count"],
-        "rating_form": rating_form,
-        "user_rating": user_rating,
-        "is_favorite": is_favorite,
-        "comments": comments,
-        "comment_form": comment_form,
-        "user_comment": user_comment,
-    })
-    
 def tmdb_tv_detail(request, tmdb_id):
     tv = get_tv_details(tmdb_id)
     providers = get_tv_watch_providers(tmdb_id)
+    avg_data = _get_ratings_summary("tv", tmdb_id)
+    user_state = _get_user_media_state(request, "tv", tmdb_id)
 
-    avg_key = f"ratings:avg:tv:{tmdb_id}"
-    avg_data = cache.get(avg_key)
-
-    if avg_data is None:
-        agg = Rating.objects.filter(media_type="tv", tmdb_id=tmdb_id).aggregate(
-            avg=Avg("score"),
-            count=Count("id"),
-        )
-        avg_data = {"avg": agg["avg"], "count": agg["count"]}
-        cache.set(avg_key, avg_data, 60 * 5)
-
-    rating_form = RatingForm()
-    user_rating = None
-    user_comment = None
-    comments = None
-    comment_form = None
-    is_favorite = False
-
-    if request.user.is_authenticated:
-        user_rating = Rating.objects.filter(
-            user=request.user,
-            media_type="tv",
-            tmdb_id=tmdb_id
-        ).first()
-        is_favorite = Favorite.objects.filter(
-            user=request.user,
-            media_type="tv",
-            tmdb_id=tmdb_id
-        ).exists()
-        comments = (
-            Comment.objects
-            .filter(media_type="tv", tmdb_id=tmdb_id)
-            .select_related("user")
-            .all()
-        )
-        user_comment = (
-            Comment.objects
-            .filter(media_type="tv", tmdb_id=tmdb_id, user=request.user)
-            .order_by("-created_at")
-            .first()
-        )
-        comment_form = CommentForm()
-
-    return render(request, "movies/tmdb_tv_detail.html", {
-        "tv": tv,
-        "providers": providers,
-        "ratings_avg": avg_data["avg"],
-        "ratings_count": avg_data["count"],
-        "rating_form": rating_form,
-        "user_rating": user_rating,
-        "is_favorite": is_favorite,
-        "comments": comments,
-        "comment_form": comment_form,
-        "user_comment": user_comment,
-    })
+    return render(
+        request,
+        "movies/tmdb_tv_detail.html",
+        {
+            "tv": tv,
+            "providers": providers,
+            "ratings_avg": avg_data["avg"],
+            "ratings_count": avg_data["count"],
+            "rating_form": RatingForm(),
+            **user_state,
+        },
+    )
 
 
 def tmdb_image_proxy(request, size: str, image_path: str):

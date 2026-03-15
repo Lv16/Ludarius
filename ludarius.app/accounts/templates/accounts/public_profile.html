@@ -12,26 +12,50 @@
 <hr>
 
 <p>
-  Comentários: <strong>{{ stats.comments_count }}</strong> |
-  Avaliações: <strong>{{ stats.ratings_count }}</strong>
+  Comentarios: <strong>{{ stats.comments_count }}</strong> |
+  Avaliacoes: <strong>{{ stats.ratings_count }}</strong> |
+  Favoritos: <strong>{{ stats.favorites_count }}</strong>
 </p>
 
 <hr>
 
-<h3>Últimos comentários</h3>
+<h3>Favoritos recentes</h3>
 
 <ul>
-  {% for c in comments_page %}
+  {% for it in favorites_items %}
+    <li>
+      {% if it.media_type == "movie" %}
+        <a href="{% url 'tmdb_movie_detail' it.tmdb_id %}">
+          <strong>Filme - {% if it.title %}{{ it.title }}{% else %}TMDB {{ it.tmdb_id }}{% endif %}</strong>
+        </a>
+      {% else %}
+        <a href="{% url 'tmdb_tv_detail' it.tmdb_id %}">
+          <strong>Serie/Anime - {% if it.title %}{{ it.title }}{% else %}TMDB {{ it.tmdb_id }}{% endif %}</strong>
+        </a>
+      {% endif %}
+      <br>
+      <small>{{ it.created_at|date:"d/m/Y H:i" }}</small>
+    </li>
+    <hr>
+  {% empty %}
+    <li>Este usuario ainda nao favoritou nenhum titulo.</li>
+  {% endfor %}
+</ul>
+
+<h3>Ultimos comentarios</h3>
+
+<ul>
+  {% for c in comments_items %}
     <li>
       <small>{{ c.created_at|date:"d/m/Y H:i" }}</small><br>
 
       {% if c.media_type == "movie" %}
         <a href="{% url 'tmdb_movie_detail' c.tmdb_id %}">
-          <strong>Filme • {% if c.title %}{{ c.title }}{% else %}TMDB {{ c.tmdb_id }}{% endif %}</strong>
+          <strong>Filme - {% if c.title %}{{ c.title }}{% else %}TMDB {{ c.tmdb_id }}{% endif %}</strong>
         </a>
       {% else %}
         <a href="{% url 'tmdb_tv_detail' c.tmdb_id %}">
-          <strong>Série/Anime • {% if c.title %}{{ c.title }}{% else %}TMDB {{ c.tmdb_id }}{% endif %}</strong>
+          <strong>Serie/Anime - {% if c.title %}{{ c.title }}{% else %}TMDB {{ c.tmdb_id }}{% endif %}</strong>
         </a>
       {% endif %}
 
@@ -39,38 +63,38 @@
     </li>
     <hr>
   {% empty %}
-    <li>Este usuário ainda não comentou.</li>
+    <li>Este usuario ainda nao comentou.</li>
   {% endfor %}
 </ul>
 
 <p>
   {% if comments_page.has_previous %}
-    <a href="?page_comments={{ comments_page.previous_page_number }}&page_ratings={{ ratings_page.number }}">? Anterior</a>
+    <a href="?page_comments={{ comments_page.previous_page_number }}&page_ratings={{ ratings_page.number }}">Anterior</a>
   {% endif %}
 
-  <span>P?gina {{ comments_page.number }} de {{ comments_page.paginator.num_pages }}</span>
+  <span>Pagina {{ comments_page.number }} de {{ comments_page.paginator.num_pages }}</span>
 
   {% if comments_page.has_next %}
-    <a href="?page_comments={{ comments_page.next_page_number }}&page_ratings={{ ratings_page.number }}">Pr?xima ?</a>
+    <a href="?page_comments={{ comments_page.next_page_number }}&page_ratings={{ ratings_page.number }}">Proxima</a>
   {% endif %}
 </p>
 
 <hr>
 
-<h3>Últimas avaliações</h3>
+<h3>Ultimas avaliacoes</h3>
 
 <ul>
-  {% for r in ratings_page %}
+  {% for r in ratings_items %}
     <li>
       <small>{{ r.updated_at|date:"d/m/Y H:i" }}</small><br>
 
       {% if r.media_type == "movie" %}
         <a href="{% url 'tmdb_movie_detail' r.tmdb_id %}">
-          <strong>Filme • {% if r.title %}{{ r.title }}{% else %}TMDB {{ r.tmdb_id }}{% endif %}</strong>
+          <strong>Filme - {% if r.title %}{{ r.title }}{% else %}TMDB {{ r.tmdb_id }}{% endif %}</strong>
         </a>
       {% else %}
         <a href="{% url 'tmdb_tv_detail' r.tmdb_id %}">
-          <strong>Série/Anime • {% if r.title %}{{ r.title }}{% else %}TMDB {{ r.tmdb_id }}{% endif %}</strong>
+          <strong>Serie/Anime - {% if r.title %}{{ r.title }}{% else %}TMDB {{ r.tmdb_id }}{% endif %}</strong>
         </a>
       {% endif %}
 
@@ -78,7 +102,7 @@
     </li>
     <hr>
   {% empty %}
-    <li>Este usuário ainda não avaliou nenhum título.</li>
+    <li>Este usuario ainda nao avaliou nenhum titulo.</li>
   {% endfor %}
 </ul>
 

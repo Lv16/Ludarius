@@ -12,6 +12,7 @@ class StreamingPlatform(models.Model):
 
 
 class Movie(models.Model):
+    tmdb_id = models.IntegerField(unique=True, null=True, blank=True, db_index=True)
     title = models.CharField(max_length=200)
     original_title = models.CharField(max_length=200, blank=True, null=True)
     synopsis = models.TextField(blank=True, null=True)

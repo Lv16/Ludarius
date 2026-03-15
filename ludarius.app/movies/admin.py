@@ -5,8 +5,8 @@ from .models import Movie, StreamingPlatform, MovieAvailability
 
 @admin.register(Movie)
 class MovieAdmin(admin.ModelAdmin):
-    list_display = ('title', 'release_date', 'rating')
-    search_fields = ('title', 'original_title')
+    list_display = ("title", "tmdb_id", "release_date", "rating")
+    search_fields = ("title", "original_title", "tmdb_id")
 
 
 @admin.register(StreamingPlatform)

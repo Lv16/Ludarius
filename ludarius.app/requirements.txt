@@ -4,3 +4,7 @@ python-dotenv
 django-allauth
 PyJWT
 cryptography
+gunicorn
+whitenoise
+dj-database-url
+psycopg[binary]

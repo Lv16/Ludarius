@@ -4,7 +4,7 @@
 
 {% block content %}
 
-<a href="{% url 'home' %}">← Voltar</a>
+<a href="{% url 'home' %}">&larr; Voltar</a>
 
 <h1>{{ movie.title }}</h1>
 {% if movie.poster_url %}
@@ -12,11 +12,11 @@
 {% endif %}
 
 {% if movie.original_title %}
-  <p><strong>Título original:</strong> {{ movie.original_title }}</p>
+  <p><strong>Titulo original:</strong> {{ movie.original_title }}</p>
 {% endif %}
 
 {% if movie.release_date %}
-  <p><strong>Lançamento:</strong> {{ movie.release_date }}</p>
+  <p><strong>Lancamento:</strong> {{ movie.release_date }}</p>
 {% endif %}
 
 {% if movie.rating %}
@@ -36,40 +36,20 @@
     {% for a in availabilities %}
       <li>
         <strong>{{ a.platform.name }}</strong>
-        — {{ a.get_access_type_display }}
-        {% if a.price %} — R$ {{ a.price }}{% endif %}
-        {% if a.link %} — <a href="{{ a.link }}" target="_blank" rel="noopener">Abrir</a>{% endif %}
+        - {{ a.get_access_type_display }}
+        {% if a.price %} - R$ {{ a.price }}{% endif %}
+        {% if a.link %} - <a href="{{ a.link }}" target="_blank" rel="noopener">Abrir</a>{% endif %}
       </li>
     {% endfor %}
   </ul>
 {% else %}
-  <p>Ainda não há disponibilidade cadastrada para este título.</p>
+  <p>Ainda nao ha disponibilidade cadastrada para este titulo.</p>
 {% endif %}
+
 <hr>
-<h2>Comentários</h2>
 
-{% if user.is_authenticated %}
-  <form method="post" action="{% url 'add_comment' movie.id %}">
-    {% csrf_token %}
-    {{ comment_form.as_p }}
-    <button type="submit">Adicionar comentário</button>
-  </form>
-
-  <hr>
-
-  <ul>
-    {% for c in comments %}
-    <li>
-      <strong>{{ c.user.username }}</strong>
-      em {{ c.created_at|date:"d/m/Y H:i" }}:
-      <p>{{ c.text }}</p>
-    </li>
-    {% empty %}
-    <li>Ainda não há comentários para este filme.</li>
-    {% endfor %}
-  </ul>
-{% else %}
-  <p>Faça login para ver e adicionar comentários.</p>
-{% endif %}
+<h2>Catalogo local</h2>
+<p>Este registro ainda nao foi vinculado ao catalogo TMDB.</p>
+<p>Enquanto isso, ele funciona apenas como cadastro editorial e disponibilidade manual.</p>
 
 {% endblock %}
