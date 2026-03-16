@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}{{ platform.name }} | Ludarius{% endblock %}
+
+{% block content %}
+<h2>{{ platform.name }}</h2>
+
+{% if platform.website %}
+  <p><a href="{{ platform.website }}" target="_blank" rel="noopener">Site oficial</a></p>
+{% endif %}
+
+<p>
+  Filtrar:
+  <a href="{% url 'provider_detail' platform.id %}">Todos</a> |
+  <a href="{% url 'provider_detail' platform.id %}?access_type=subscription">Assinatura</a> |
+  <a href="{% url 'provider_detail' platform.id %}?access_type=rent">Aluguel</a> |
+  <a href="{% url 'provider_detail' platform.id %}?access_type=buy">Compra</a>
+</p>
+
+<ul>
+    {% for availability in availabilities %}
+      <li>
+        {% if availability.movie.tmdb_id %}
+          <a href="{% url 'tmdb_movie_detail' availability.movie.tmdb_id %}"><strong>{{ availability.movie.title }}</strong></a>
+        {% else %}
+          <a href="{% url 'movie_detail' availability.movie.id %}"><strong>{{ availability.movie.title }}</strong></a>
+        {% endif %}
+        - {{ availability.get_access_type_display }}
+        {% if availability.price %} - R$ {{ availability.price }}{% endif %}
+        {% if availability.link %} - <a href="{{ availability.link }}" target="_blank" rel="noopener">Abrir</a>{% endif %}
+      </li>
+    {% empty %}
+      <li>Nenhum titulo encontrado para este filtro.</li>
+    {% endfor %}
+</ul>
+{% endblock %}

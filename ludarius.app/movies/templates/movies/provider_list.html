@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Provedores | Ludarius{% endblock %}
+
+{% block content %}
+<h2>Provedores no Ludarius</h2>
+
+<p>Catalogo local de plataformas com disponibilidade cadastrada manualmente.</p>
+
+<ul>
+    {% for provider in providers %}
+      <li>
+        <a href="{% url 'provider_detail' provider.platform__id %}"><strong>{{ provider.platform__name }}</strong></a>
+        <small>{{ provider.total }} titulo{{ provider.total|pluralize }}</small>
+      </li>
+    {% empty %}
+      <li>Ainda nao ha provedores com titulos cadastrados.</li>
+    {% endfor %}
+</ul>
+{% endblock %}

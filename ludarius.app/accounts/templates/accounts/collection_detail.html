@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}{{ collection.title }} | Ludarius{% endblock %}
+
+{% block content %}
+<h2>{{ collection.title }}</h2>
+<p>Por <a href="{% url 'public_profile' collection.user.username %}">@{{ collection.user.username }}</a></p>
+{% if collection.description %}<p>{{ collection.description }}</p>{% endif %}
+<p>{% if collection.is_public %}Colecao publica{% else %}Colecao privada{% endif %}</p>
+
+<ul>
+  {% for item in collection_items %}
+    <li>
+      <a href="{% url item.detail_url_name item.tmdb_id %}"><strong>{% if item.title %}{{ item.title }}{% else %}TMDB {{ item.tmdb_id }}{% endif %}</strong></a>
+      <small>{{ item.created_at|date:"d/m/Y H:i" }}</small>
+    </li>
+  {% empty %}
+    <li>Esta colecao ainda nao possui itens.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

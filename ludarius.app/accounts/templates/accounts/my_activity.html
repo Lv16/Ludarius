@@ -9,108 +9,73 @@
 </p>
 
 <p>
-  <a href="{% url 'my_activity' %}?tab=comments"{% if tab == "comments" %} style="text-decoration: underline;"{% endif %}>
-    Meus comentarios
-  </a>
+  <a href="{% url 'my_activity' %}?tab=comments"{% if tab == "comments" %} style="text-decoration: underline;"{% endif %}>Comentarios</a>
   |
-  <a href="{% url 'my_activity' %}?tab=ratings"{% if tab == "ratings" %} style="text-decoration: underline;"{% endif %}>
-    Minhas avaliacoes
-  </a>
+  <a href="{% url 'my_activity' %}?tab=ratings"{% if tab == "ratings" %} style="text-decoration: underline;"{% endif %}>Avaliacoes</a>
   |
-  <a href="{% url 'my_activity' %}?tab=favorites"{% if tab == "favorites" %} style="text-decoration: underline;"{% endif %}>
-    Meus favoritos
-  </a>
+  <a href="{% url 'my_activity' %}?tab=favorites"{% if tab == "favorites" %} style="text-decoration: underline;"{% endif %}>Favoritos</a>
   |
-  <span style="opacity: 0.6;">Assistidos (em breve)</span>
+  <a href="{% url 'my_activity' %}?tab=statuses"{% if tab == "statuses" %} style="text-decoration: underline;"{% endif %}>Status</a>
 </p>
 
 <hr>
 
 {% if tab == "comments" %}
   <h3>Meus comentarios</h3>
-
   {% with context_page=page_obj %}
     <ul>
       {% for it in comments %}
         <li>
-          <a href="{% url it.detail_url_name it.tmdb_id %}">
-            <strong>{% if it.title %}{{ it.title }}{% else %}TMDB {{ it.tmdb_id }}{% endif %}</strong>
-          </a>
-          {% if it.media_type == "movie" %}
-            <span> Filme</span>
-          {% else %}
-            <span> Serie/Anime</span>
-          {% endif %}
-          <br>
+          <a href="{% url it.detail_url_name it.tmdb_id %}"><strong>{% if it.title %}{{ it.title }}{% else %}TMDB {{ it.tmdb_id }}{% endif %}</strong></a>
           <small>{{ it.created_at|date:"d/m/Y H:i" }}</small>
           <p>{{ it.text }}</p>
         </li>
-        <hr>
       {% empty %}
         <li>Voce ainda nao fez comentarios.</li>
       {% endfor %}
     </ul>
-
     <p>
-      {% if context_page.has_previous %}
-        <a href="{% url 'my_activity' %}?tab={{ tab }}&page={{ context_page.previous_page_number }}">Anterior</a>
-      {% endif %}
-
+      {% if context_page.has_previous %}<a href="{% url 'my_activity' %}?tab={{ tab }}&page={{ context_page.previous_page_number }}">Anterior</a>{% endif %}
       <span>Pagina {{ context_page.number }} de {{ context_page.paginator.num_pages }}</span>
-
-      {% if context_page.has_next %}
-        <a href="{% url 'my_activity' %}?tab={{ tab }}&page={{ context_page.next_page_number }}">Proxima</a>
-      {% endif %}
+      {% if context_page.has_next %}<a href="{% url 'my_activity' %}?tab={{ tab }}&page={{ context_page.next_page_number }}">Proxima</a>{% endif %}
     </p>
   {% endwith %}
 {% elif tab == "ratings" %}
   <h3>Minhas avaliacoes</h3>
-
   <ul>
     {% for it in ratings_items %}
       <li>
-        <a href="{% url it.detail_url_name it.tmdb_id %}">
-          <strong>{% if it.title %}{{ it.title }}{% else %}TMDB {{ it.tmdb_id }}{% endif %}</strong>
-        </a>
-
-        {% if it.media_type == "movie" %}
-          <span> Filme</span>
-        {% else %}
-          <span> Serie/Anime</span>
-        {% endif %}
-
-        <span> Minha nota: <strong>{{ it.score }}</strong>/10</span>
-        <br>
-        <small>Atualizado em {{ it.updated_at|date:"d/m/Y H:i" }}</small>
+        <a href="{% url it.detail_url_name it.tmdb_id %}"><strong>{% if it.title %}{{ it.title }}{% else %}TMDB {{ it.tmdb_id }}{% endif %}</strong></a>
+        <span>Nota: <strong>{{ it.score }}</strong>/10</span>
       </li>
-      <hr>
     {% empty %}
       <li>Voce ainda nao avaliou nenhum titulo.</li>
     {% endfor %}
   </ul>
 {% elif tab == "favorites" %}
   <h3>Meus favoritos</h3>
-
   <ul>
     {% for it in favorites_items %}
       <li>
-        <a href="{% url it.detail_url_name it.tmdb_id %}">
-          <strong>{% if it.title %}{{ it.title }}{% else %}TMDB {{ it.tmdb_id }}{% endif %}</strong>
-        </a>
-        {% if it.media_type == "movie" %}
-          <span> Filme</span>
-        {% else %}
-          <span> Serie/Anime</span>
-        {% endif %}
-        <br>
+        <a href="{% url it.detail_url_name it.tmdb_id %}"><strong>{% if it.title %}{{ it.title }}{% else %}TMDB {{ it.tmdb_id }}{% endif %}</strong></a>
         <small>Favoritado em {{ it.created_at|date:"d/m/Y H:i" }}</small>
       </li>
-      <hr>
     {% empty %}
       <li>Voce ainda nao adicionou favoritos.</li>
     {% endfor %}
   </ul>
-{% else %}
-  <p>Essa aba ainda nao foi implementada.</p>
+{% elif tab == "statuses" %}
+  <h3>Meus status</h3>
+  <ul>
+    {% for it in status_items %}
+      <li>
+        <a href="{% url it.detail_url_name it.tmdb_id %}"><strong>{% if it.title %}{{ it.title }}{% else %}TMDB {{ it.tmdb_id }}{% endif %}</strong></a>
+        <span>{{ it.status }}</span>
+        <small>Atualizado em {{ it.updated_at|date:"d/m/Y H:i" }}</small>
+      </li>
+    {% empty %}
+      <li>Voce ainda nao registrou status para nenhum titulo.</li>
+    {% endfor %}
+  </ul>
 {% endif %}
 {% endblock %}

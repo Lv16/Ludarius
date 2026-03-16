@@ -8,5 +8,6 @@ urlpatterns = [
     path("tmdb/tv/<int:tmdb_id>/", views.tmdb_tv_detail, name="tmdb_tv_detail"),
     path("tmdb/image/<str:size>/<path:image_path>", views.tmdb_image_proxy, name="tmdb_image_proxy"),
     path("explorar/", views.explore, name="explore"),
-
+    path("provedores/", views.provider_list, name="provider_list"),
+    path("provedores/<int:platform_id>/", views.provider_detail, name="provider_detail"),
 ]

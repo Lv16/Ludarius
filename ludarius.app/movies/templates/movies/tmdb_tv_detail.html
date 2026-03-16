@@ -1,59 +1,25 @@
 {% extends "base.html" %}
 {% load static %}
 {% block og_title %}{{ tv.name }} | Ludarius{% endblock %}
-{% block og_description %}{% if tv.overview %}{{ tv.overview|truncatechars:160 }}{% else %}Veja onde assistir e as avaliações no Ludarius.{% endif %}{% endblock %}
+{% block og_description %}{% if tv.overview %}{{ tv.overview|truncatechars:160 }}{% else %}Veja onde assistir e as avaliacoes no Ludarius.{% endif %}{% endblock %}
 {% block og_url %}{{ request.build_absolute_uri }}{% endblock %}
 {% block og_image %}{% if tv.poster_url %}{{ tv.poster_url }}{% else %}{% static 'icons/icon-512.png' %}{% endif %}{% endblock %}
 
-
 {% block content %}
-<a href="{% url 'home' %}">← Voltar</a>
+<a href="{% url 'home' %}">&larr; Voltar</a>
 
 <h2>{{ tv.name }}</h2>
-  <div
-    id="media-meta"
-    data-media-type="tv"
-    data-tmdb-id="{{ tv.tmdb_id }}"
-    data-title="{{ tv.name|escape }}"
-    data-poster="{{ tv.poster_url|default:'' }}"
-    style="display:none;"> 
-  </div>
+<div id="media-meta" data-media-type="tv" data-tmdb-id="{{ tv.tmdb_id }}" data-title="{{ tv.name|escape }}" data-poster="{{ tv.poster_url|default:'' }}" style="display:none;"></div>
 
-{% if tv.original_name and tv.original_name != tv.name %}
-  <p><strong>Nome original:</strong> {{ tv.original_name }}</p>
-{% endif %}
-
-{% if tv.first_air_date %}
-  <p><strong>Início:</strong> {{ tv.first_air_date }}</p>
-{% endif %}
-
-{% if tv.last_air_date %}
-  <p><strong>Último episódio:</strong> {{ tv.last_air_date }}</p>
-{% endif %}
-
-{% if tv.status %}
-  <p><strong>Status:</strong> {{ tv.status }}</p>
-{% endif %}
-
-{% if tv.number_of_seasons %}
-  <p><strong>Temporadas:</strong> {{ tv.number_of_seasons }}</p>
-{% endif %}
-
-{% if tv.number_of_episodes %}
-  <p><strong>Episódios:</strong> {{ tv.number_of_episodes }}</p>
-{% endif %}
-
-{% if tv.genres %}
-  <p><strong>Gêneros:</strong> {{ tv.genres|join:", " }}</p>
-{% endif %}
-
-{% if tv.rating %}
-  <p><strong>Nota:</strong> {{ tv.rating }}</p>
-{% endif %}
-
-{% if tv.poster_url %}
-  <img src="{{ tv.poster_url }}" alt="Poster de {{ tv.name }}" width="220">
-{% endif %}
+{% if tv.original_name and tv.original_name != tv.name %}<p><strong>Nome original:</strong> {{ tv.original_name }}</p>{% endif %}
+{% if tv.first_air_date %}<p><strong>Inicio:</strong> {{ tv.first_air_date }}</p>{% endif %}
+{% if tv.last_air_date %}<p><strong>Ultimo episodio:</strong> {{ tv.last_air_date }}</p>{% endif %}
+{% if tv.status %}<p><strong>Status da serie:</strong> {{ tv.status }}</p>{% endif %}
+{% if tv.number_of_seasons %}<p><strong>Temporadas:</strong> {{ tv.number_of_seasons }}</p>{% endif %}
+{% if tv.number_of_episodes %}<p><strong>Episodios:</strong> {{ tv.number_of_episodes }}</p>{% endif %}
+{% if tv.genres %}<p><strong>Generos:</strong> {{ tv.genres|join:", " }}</p>{% endif %}
+{% if tv.rating %}<p><strong>Nota TMDB:</strong> {{ tv.rating }}</p>{% endif %}
+{% if tv.poster_url %}<img src="{{ tv.poster_url }}" alt="Poster de {{ tv.name }}" width="220">{% endif %}
 
 {% if user.is_authenticated %}
   <form method="post" action="{% url 'favorite_tv' tv.tmdb_id %}">
@@ -64,9 +30,34 @@
       <button type="submit">Adicionar aos favoritos</button>
     {% endif %}
   </form>
+
+  <form method="post" action="{% url 'update_media_status' 'tv' tv.tmdb_id %}">
+    {% csrf_token %}
+    {{ status_form.status }}
+    <button type="submit">Salvar status</button>
+  </form>
+  {% if user_status %}<p>Seu status atual: <strong>{{ user_status.get_status_display }}</strong></p>{% endif %}
+
+  <form method="post" action="{% url 'add_to_collection' 'tv' tv.tmdb_id %}">
+    {% csrf_token %}
+    {{ collection_form.collection }}
+    <button type="submit">Adicionar a colecao</button>
+  </form>
+
+  {% if has_availability_alert %}
+    <p>Alerta de disponibilidade ativo para este titulo.</p>
+  {% else %}
+    <form method="post" action="{% url 'create_availability_alert' 'tv' tv.tmdb_id %}">
+      {% csrf_token %}
+      <button type="submit">Criar alerta de disponibilidade</button>
+    </form>
+  {% endif %}
 {% else %}
-  <p>Faça login para favoritar.</p>
+  <p>Faca login para favoritar, salvar status e usar colecoes.</p>
 {% endif %}
+
+<p><strong>Favoritos:</strong> {{ favorite_count }} | <strong>Comentarios:</strong> {{ comment_count }}</p>
+<p><strong>Status:</strong> Quero ver {{ status_counts.want|default:0 }}, Assistindo {{ status_counts.watching|default:0 }}, Assistido {{ status_counts.watched|default:0 }}, Dropado {{ status_counts.dropped|default:0 }}</p>
 
 {% if tv.overview %}
   <hr>
@@ -76,111 +67,52 @@
 
 <hr>
 <h3>Onde assistir (Brasil)</h3>
-
 {% if providers.flatrate or providers.rent or providers.buy %}
   {% if providers.flatrate %}
     <p><strong>Incluso na assinatura</strong></p>
-    <ul>
-      {% for p in providers.flatrate %}
-        <li>
-          {% if p.logo_url %}
-            <img src="{{ p.logo_url }}" alt="{{ p.name }}" width="28" style="vertical-align: middle;">
-          {% endif %}
-          {{ p.name }}
-        </li>
-      {% endfor %}
-    </ul>
+    <ul>{% for p in providers.flatrate %}<li>{{ p.name }}</li>{% endfor %}</ul>
   {% endif %}
-
   {% if providers.rent %}
     <p><strong>Aluguel</strong></p>
-    <ul>
-      {% for p in providers.rent %}
-        <li>
-          {% if p.logo_url %}
-            <img src="{{ p.logo_url }}" alt="{{ p.name }}" width="28" style="vertical-align: middle;">
-          {% endif %}
-          {{ p.name }}
-        </li>
-      {% endfor %}
-    </ul>
+    <ul>{% for p in providers.rent %}<li>{{ p.name }}</li>{% endfor %}</ul>
   {% endif %}
-
   {% if providers.buy %}
     <p><strong>Compra</strong></p>
-    <ul>
-      {% for p in providers.buy %}
-        <li>
-          {% if p.logo_url %}
-            <img src="{{ p.logo_url }}" alt="{{ p.name }}" width="28" style="vertical-align: middle;">
-          {% endif %}
-          {{ p.name }}
-        </li>
-      {% endfor %}
-    </ul>
+    <ul>{% for p in providers.buy %}<li>{{ p.name }}</li>{% endfor %}</ul>
   {% endif %}
-
-  {% if providers.link %}
-    <p><a href="{{ providers.link }}" target="_blank" rel="noopener">Abrir página de provedores</a></p>
-  {% endif %}
+  {% if providers.link %}<p><a href="{{ providers.link }}" target="_blank" rel="noopener">Abrir pagina de provedores</a></p>{% endif %}
+  <p><a href="{% url 'provider_list' %}">Explorar por provedores</a></p>
 {% else %}
-  <p>Sem informações de streaming para esta série no Brasil.</p>
+  <p>Sem informacoes de streaming para esta serie no Brasil.</p>
 {% endif %}
 
 <hr>
-
-  <button
-    type="button"
-    class="share-btn"
-    data-title="{{ tv.name|escape }}"
-    data-url="{{ request.build_absolute_uri }}"
-    data-poster="{{ tv.poster_url|default:'' }}"
-    data-rating="{% if user_rating %}{{ user_rating.score }}{% elif ratings_avg %}{{ ratings_avg|floatformat:1 }}{% endif %}"
-    data-comment="{% if user_comment %}{{ user_comment.text|truncatechars:220|escape }}{% endif %}"
-  >
-    Compartilhar
-  </button>
+<button type="button" class="share-btn" data-title="{{ tv.name|escape }}" data-url="{{ request.build_absolute_uri }}" data-poster="{{ tv.poster_url|default:'' }}" data-rating="{% if user_rating %}{{ user_rating.score }}{% elif ratings_avg %}{{ ratings_avg|floatformat:1 }}{% endif %}" data-comment="{% if user_comment %}{{ user_comment.text|truncatechars:220|escape }}{% endif %}">Compartilhar</button>
 
 <hr>
-<h3>Avaliação dos usuários (Ludarius)</h3>
-
+<h3>Avaliacao dos usuarios (Ludarius)</h3>
 {% if ratings_count and ratings_count > 0 %}
-  <p>
-    Média: <strong>{{ ratings_avg|floatformat:1 }}</strong>/10
-    ({{ ratings_count }} avaliação{{ ratings_count|pluralize:"ões" }})
-  </p>
+  <p>Media: <strong>{{ ratings_avg|floatformat:1 }}</strong>/10 ({{ ratings_count }} avaliacao{{ ratings_count|pluralize:"oes" }})</p>
 {% else %}
-  <p>Ainda não há avaliações de usuários para este título.</p>
+  <p>Ainda nao ha avaliacoes de usuarios para este titulo.</p>
 {% endif %}
 
 <hr>
-<h3>Sua avaliação</h3>
-
+<h3>Sua avaliacao</h3>
 {% if user.is_authenticated %}
   <form method="post" action="{% url 'rate_tv' tv.tmdb_id %}">
     {% csrf_token %}
-
     <label for="id_score">Nota (1 a 10)</label><br>
-    {{ rating_form.score }} 
+    {{ rating_form.score }}
     <button type="submit">Salvar</button>
-
-    {% if rating_form.score.errors %}
-      <div>{{ rating_form.score.errors }}</div>
-    {% endif %}
   </form>
-
-  {% if user_rating %}
-    <p>Sua nota atual: <strong>{{ user_rating.score }}</strong></p>
-  {% endif %}
+  {% if user_rating %}<p>Sua nota atual: <strong>{{ user_rating.score }}</strong></p>{% endif %}
 {% else %}
-  <p>Você precisa estar logado para avaliar.</p>
+  <p>Voce precisa estar logado para avaliar.</p>
 {% endif %}
 
-
 <hr>
-
-<h3>Comentários</h3>
-
+<h3>Comentarios</h3>
 {% if user.is_authenticated %}
   <form method="post" action="{% url 'add_tmdb_tv_comment' tv.tmdb_id %}">
     {% csrf_token %}
@@ -188,27 +120,22 @@
     <br>
     <button type="submit">Publicar</button>
   </form>
-
   <hr>
-
   <ul>
     {% for c in comments %}
       <li>
-        <a href="{% url 'public_profile' c.user.username %}">
-            <strong>@{{ c.user.username }}</strong>
-        </a>
-
-        em {{ c.created_at|date:"d/m/Y H:i" }}:
+        <a href="{% url 'public_profile' c.user.username %}"><strong>@{{ c.user.username }}</strong></a>
+        <small>{{ c.created_at|date:"d/m/Y H:i" }}</small>
         <p>{{ c.text }}</p>
       </li>
     {% empty %}
-      <li>Não há comentários para esta série.</li>
+      <li>Nao ha comentarios para esta serie.</li>
     {% endfor %}
   </ul>
 {% else %}
-  <p>Você precisa estar logado para ver e escrever comentários.</p>
+  <p>Voce precisa estar logado para ver e escrever comentarios.</p>
 {% endif %}
 
 <hr>
-<p><small>Fonte: TMDB • ID: {{ tv.tmdb_id }}</small></p>
+<p><small>Fonte: TMDB - ID: {{ tv.tmdb_id }}</small></p>
 {% endblock %}

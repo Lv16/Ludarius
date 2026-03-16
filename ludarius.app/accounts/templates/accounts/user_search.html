@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Buscar usuarios | Ludarius{% endblock %}
+
+{% block content %}
+<h2>Buscar usuarios</h2>
+
+<form method="get">
+  <input type="search" name="q" value="{{ q }}" placeholder="Username">
+  <button type="submit">Buscar</button>
+</form>
+
+<ul>
+  {% for item in users %}
+    <li><a href="{% url 'public_profile' item.username %}">@{{ item.username }}</a></li>
+  {% empty %}
+    {% if q %}<li>Nenhum usuario encontrado.</li>{% endif %}
+  {% endfor %}
+</ul>
+{% endblock %}

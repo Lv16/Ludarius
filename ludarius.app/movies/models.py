@@ -39,5 +39,25 @@ class MovieAvailability(models.Model):
     price = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     link = models.URLField()
 
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+
+        if is_new and self.movie.tmdb_id:
+            from accounts.models import AvailabilityAlert, Notification
+
+            recipient_ids = AvailabilityAlert.objects.filter(
+                media_type="movie",
+                tmdb_id=self.movie.tmdb_id,
+            ).values_list("user_id", flat=True)
+
+            for user_id in set(recipient_ids):
+                Notification.objects.create(
+                    user_id=user_id,
+                    verb=f"novo titulo disponivel em {self.platform.name}",
+                    media_type="movie",
+                    tmdb_id=self.movie.tmdb_id,
+                )
+
     def __str__(self):
         return f"{self.movie.title} - {self.platform.name}"

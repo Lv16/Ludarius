@@ -3,107 +3,78 @@
 {% block title %}@{{ profile_user.username }} | Ludarius{% endblock %}
 
 {% block content %}
-
 <h2>@{{ profile_user.username }}</h2>
-<p>
-  <small>No Ludarius desde {{ profile_user.date_joined|date:"d/m/Y" }}</small>
-</p>
+<p><small>No Ludarius desde {{ profile_user.date_joined|date:"d/m/Y" }}</small></p>
+{% if profile.bio %}<p>{{ profile.bio }}</p>{% endif %}
 
 <hr>
 
 <p>
   Comentarios: <strong>{{ stats.comments_count }}</strong> |
   Avaliacoes: <strong>{{ stats.ratings_count }}</strong> |
-  Favoritos: <strong>{{ stats.favorites_count }}</strong>
+  Favoritos: <strong>{{ stats.favorites_count }}</strong> |
+  Status: <strong>{{ stats.statuses_count }}</strong> |
+  Colecoes: <strong>{{ stats.collections_count }}</strong>
 </p>
 
 <hr>
 
-<h3>Favoritos recentes</h3>
+<h3>Status recentes</h3>
+<ul>
+  {% for it in status_items %}
+    <li>
+      <a href="{% url it.detail_url_name it.tmdb_id %}"><strong>{% if it.title %}{{ it.title }}{% else %}TMDB {{ it.tmdb_id }}{% endif %}</strong></a>
+      <span>{{ it.status }}</span>
+    </li>
+  {% empty %}
+    <li>Este usuario ainda nao registrou status.</li>
+  {% endfor %}
+</ul>
 
+<h3>Colecoes publicas</h3>
+<ul>
+  {% for collection in collections %}
+    <li>
+      <a href="{% url 'collection_detail' collection.id %}"><strong>{{ collection.title }}</strong></a>
+      {% if collection.description %}<p>{{ collection.description }}</p>{% endif %}
+    </li>
+  {% empty %}
+    <li>Este usuario ainda nao publicou colecoes.</li>
+  {% endfor %}
+</ul>
+
+<h3>Favoritos recentes</h3>
 <ul>
   {% for it in favorites_items %}
     <li>
-      {% if it.media_type == "movie" %}
-        <a href="{% url 'tmdb_movie_detail' it.tmdb_id %}">
-          <strong>Filme - {% if it.title %}{{ it.title }}{% else %}TMDB {{ it.tmdb_id }}{% endif %}</strong>
-        </a>
-      {% else %}
-        <a href="{% url 'tmdb_tv_detail' it.tmdb_id %}">
-          <strong>Serie/Anime - {% if it.title %}{{ it.title }}{% else %}TMDB {{ it.tmdb_id }}{% endif %}</strong>
-        </a>
-      {% endif %}
-      <br>
-      <small>{{ it.created_at|date:"d/m/Y H:i" }}</small>
+      <a href="{% url it.detail_url_name it.tmdb_id %}"><strong>{% if it.title %}{{ it.title }}{% else %}TMDB {{ it.tmdb_id }}{% endif %}</strong></a>
     </li>
-    <hr>
   {% empty %}
     <li>Este usuario ainda nao favoritou nenhum titulo.</li>
   {% endfor %}
 </ul>
 
 <h3>Ultimos comentarios</h3>
-
 <ul>
   {% for c in comments_items %}
     <li>
-      <small>{{ c.created_at|date:"d/m/Y H:i" }}</small><br>
-
-      {% if c.media_type == "movie" %}
-        <a href="{% url 'tmdb_movie_detail' c.tmdb_id %}">
-          <strong>Filme - {% if c.title %}{{ c.title }}{% else %}TMDB {{ c.tmdb_id }}{% endif %}</strong>
-        </a>
-      {% else %}
-        <a href="{% url 'tmdb_tv_detail' c.tmdb_id %}">
-          <strong>Serie/Anime - {% if c.title %}{{ c.title }}{% else %}TMDB {{ c.tmdb_id }}{% endif %}</strong>
-        </a>
-      {% endif %}
-
+      <a href="{% url c.detail_url_name c.tmdb_id %}"><strong>{% if c.title %}{{ c.title }}{% else %}TMDB {{ c.tmdb_id }}{% endif %}</strong></a>
       <p>{{ c.text }}</p>
     </li>
-    <hr>
   {% empty %}
     <li>Este usuario ainda nao comentou.</li>
   {% endfor %}
 </ul>
 
-<p>
-  {% if comments_page.has_previous %}
-    <a href="?page_comments={{ comments_page.previous_page_number }}&page_ratings={{ ratings_page.number }}">Anterior</a>
-  {% endif %}
-
-  <span>Pagina {{ comments_page.number }} de {{ comments_page.paginator.num_pages }}</span>
-
-  {% if comments_page.has_next %}
-    <a href="?page_comments={{ comments_page.next_page_number }}&page_ratings={{ ratings_page.number }}">Proxima</a>
-  {% endif %}
-</p>
-
-<hr>
-
 <h3>Ultimas avaliacoes</h3>
-
 <ul>
   {% for r in ratings_items %}
     <li>
-      <small>{{ r.updated_at|date:"d/m/Y H:i" }}</small><br>
-
-      {% if r.media_type == "movie" %}
-        <a href="{% url 'tmdb_movie_detail' r.tmdb_id %}">
-          <strong>Filme - {% if r.title %}{{ r.title }}{% else %}TMDB {{ r.tmdb_id }}{% endif %}</strong>
-        </a>
-      {% else %}
-        <a href="{% url 'tmdb_tv_detail' r.tmdb_id %}">
-          <strong>Serie/Anime - {% if r.title %}{{ r.title }}{% else %}TMDB {{ r.tmdb_id }}{% endif %}</strong>
-        </a>
-      {% endif %}
-
-      <p>Nota: <strong>{{ r.score }}</strong>/10</p>
+      <a href="{% url r.detail_url_name r.tmdb_id %}"><strong>{% if r.title %}{{ r.title }}{% else %}TMDB {{ r.tmdb_id }}{% endif %}</strong></a>
+      <span>Nota: <strong>{{ r.score }}</strong>/10</span>
     </li>
-    <hr>
   {% empty %}
     <li>Este usuario ainda nao avaliou nenhum titulo.</li>
   {% endfor %}
 </ul>
-
 {% endblock %}

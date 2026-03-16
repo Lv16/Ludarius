@@ -6,6 +6,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from comments.models import Comment
+from accounts.models import AvailabilityAlert, Collection, CollectionItem, MediaStatus, Notification
 from favorites.models import Favorite
 from reviews.models import Rating
 
@@ -70,6 +71,21 @@ class AccountActivityTests(TestCase):
         self.assertContains(response, "Favoritado em")
 
     @patch("accounts.views.get_movie_details", return_value={"title": "Interstellar"})
+    def test_my_activity_statuses_tab_shows_resolved_title(self, _mock_title):
+        MediaStatus.objects.create(
+            user=self.user,
+            media_type="movie",
+            tmdb_id=157336,
+            status=MediaStatus.Status.WATCHED,
+        )
+
+        response = self.client.get(reverse("my_activity"), {"tab": "statuses"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Interstellar")
+        self.assertContains(response, "Assistido")
+
+    @patch("accounts.views.get_movie_details", return_value={"title": "Interstellar"})
     def test_public_profile_shows_resolved_titles_and_favorites(self, _mock_title):
         Comment.objects.create(
             user=self.user,
@@ -116,3 +132,132 @@ class AccountActivityTests(TestCase):
         self.client.get(reverse("my_activity"), {"tab": "ratings"})
 
         self.assertEqual(mock_movie_details.call_count, 1)
+
+    def test_update_media_status_creates_status(self):
+        response = self.client.post(
+            reverse("update_media_status", args=["movie", 157336]),
+            {"status": MediaStatus.Status.WANT},
+        )
+
+        self.assertRedirects(response, reverse("tmdb_movie_detail", args=[157336]), fetch_redirect_response=False)
+        self.assertTrue(
+            MediaStatus.objects.filter(
+                user=self.user,
+                media_type="movie",
+                tmdb_id=157336,
+                status=MediaStatus.Status.WANT,
+            ).exists()
+        )
+
+    def test_add_to_collection_creates_collection_item(self):
+        collection = Collection.objects.create(user=self.user, title="Favoritos sci-fi")
+
+        response = self.client.post(
+            reverse("add_to_collection", args=["movie", 157336]),
+            {"collection": collection.id},
+        )
+
+        self.assertRedirects(response, reverse("tmdb_movie_detail", args=[157336]), fetch_redirect_response=False)
+        self.assertTrue(
+            CollectionItem.objects.filter(
+                collection=collection,
+                media_type="movie",
+                tmdb_id=157336,
+            ).exists()
+        )
+
+    def test_user_search_finds_matching_username(self):
+        response = self.client.get(reverse("user_search"), {"q": "profile"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "@profileuser")
+
+    def test_mark_notifications_read_marks_existing_notifications(self):
+        from accounts.models import Notification
+
+        Notification.objects.create(user=self.user, verb="teste")
+
+        response = self.client.post(reverse("notifications_read"))
+
+        self.assertRedirects(response, reverse("notifications"), fetch_redirect_response=False)
+        self.assertFalse(Notification.objects.filter(user=self.user, is_read=False).exists())
+
+    def test_my_account_saves_profile_bio(self):
+        response = self.client.post(
+            reverse("my_account"),
+            {"bio": "Gosto de ficcao cientifica", "save_profile": "1"},
+        )
+
+        self.assertRedirects(response, reverse("my_account"), fetch_redirect_response=False)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.profile.bio, "Gosto de ficcao cientifica")
+
+    def test_private_collection_detail_requires_owner(self):
+        other_user = get_user_model().objects.create_user(
+            username="otheruser",
+            password="secret123",
+        )
+        collection = Collection.objects.create(user=other_user, title="Privada", is_public=False)
+
+        response = self.client.get(reverse("collection_detail", args=[collection.id]))
+
+        self.assertRedirects(response, reverse("home"), fetch_redirect_response=False)
+
+    def test_create_availability_alert_creates_alert(self):
+        response = self.client.post(reverse("create_availability_alert", args=["movie", 157336]))
+
+        self.assertRedirects(response, reverse("tmdb_movie_detail", args=[157336]), fetch_redirect_response=False)
+        self.assertTrue(
+            AvailabilityAlert.objects.filter(
+                user=self.user,
+                media_type="movie",
+                tmdb_id=157336,
+            ).exists()
+        )
+
+    @patch(
+        "accounts.views.get_movie_details",
+        return_value={"title": "Arrival", "poster_url": "", "tmdb_id": 329865},
+    )
+    def test_recommendations_page_shows_suggested_title(self, _mock_movie_details):
+        other_user = get_user_model().objects.create_user(
+            username="cinefriend",
+            password="secret123",
+        )
+        Favorite.objects.create(user=self.user, media_type="movie", tmdb_id=157336)
+        Favorite.objects.create(user=other_user, media_type="movie", tmdb_id=157336)
+        Favorite.objects.create(user=other_user, media_type="movie", tmdb_id=329865)
+
+        response = self.client.get(reverse("recommendations"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Arrival")
+
+    def test_remove_availability_alert_deletes_existing_alert(self):
+        alert = AvailabilityAlert.objects.create(user=self.user, media_type="movie", tmdb_id=157336)
+
+        response = self.client.post(reverse("remove_availability_alert", args=[alert.id]))
+
+        self.assertRedirects(response, reverse("my_account"), fetch_redirect_response=False)
+        self.assertFalse(AvailabilityAlert.objects.filter(id=alert.id).exists())
+
+    def test_my_account_shows_created_alerts(self):
+        AvailabilityAlert.objects.create(user=self.user, media_type="tv", tmdb_id=1399)
+
+        response = self.client.get(reverse("my_account"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "tv #1399")
+
+    def test_notification_list_shows_availability_notification(self):
+        Notification.objects.create(
+            user=self.user,
+            verb="novo titulo disponivel em Prime Video",
+            media_type="movie",
+            tmdb_id=157336,
+        )
+
+        response = self.client.get(reverse("notifications"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "novo titulo disponivel em Prime Video")

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Notificacoes | Ludarius{% endblock %}
+
+{% block content %}
+<h2>Notificacoes</h2>
+
+<form method="post" action="{% url 'notifications_read' %}">
+  {% csrf_token %}
+  <button type="submit">Marcar todas como lidas</button>
+</form>
+
+<ul>
+  {% for notification in notifications %}
+    <li>
+      {% if notification.actor %}<strong>@{{ notification.actor.username }}</strong>{% endif %}
+      {{ notification.verb }}
+      {% if notification.tmdb_id %}
+        {% if notification.media_type == "movie" %}
+          <a href="{% url 'tmdb_movie_detail' notification.tmdb_id %}">Ver titulo</a>
+        {% elif notification.media_type == "tv" %}
+          <a href="{% url 'tmdb_tv_detail' notification.tmdb_id %}">Ver titulo</a>
+        {% endif %}
+      {% endif %}
+      {% if not notification.is_read %}<strong>(nova)</strong>{% endif %}
+    </li>
+  {% empty %}
+    <li>Voce nao tem notificacoes.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

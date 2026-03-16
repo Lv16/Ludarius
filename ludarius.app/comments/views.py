@@ -3,6 +3,8 @@ from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.shortcuts import get_object_or_404, redirect
 
+from accounts.models import Notification
+from favorites.models import Favorite
 from movies.models import Movie
 
 from .forms import CommentForm
@@ -28,9 +30,26 @@ def _save_tmdb_comment(request, tmdb_id: int, media_type: str, redirect_name: st
                 tmdb_id=tmdb_id,
                 defaults={"text": text},
             )
+            _notify_interested_users(request.user, media_type, tmdb_id)
     else:
         messages.error(request, "Nao foi possivel salvar seu comentario.")
     return redirect(redirect_name, tmdb_id=tmdb_id)
+
+
+def _notify_interested_users(actor, media_type: str, tmdb_id: int):
+    recipient_ids = Favorite.objects.filter(
+        media_type=media_type,
+        tmdb_id=tmdb_id,
+    ).exclude(user=actor).values_list("user_id", flat=True)
+
+    for user_id in set(recipient_ids):
+        Notification.objects.create(
+            user_id=user_id,
+            actor=actor,
+            verb="comentou um titulo que voce favoritou",
+            media_type=media_type,
+            tmdb_id=tmdb_id,
+        )
 
 
 @login_required

@@ -4,13 +4,15 @@ from django.db.models import Avg, Count
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 
+from accounts.forms import CollectionAddItemForm, MediaStatusForm
+from accounts.models import AvailabilityAlert, MediaStatus
 from comments.forms import CommentForm
 from comments.models import Comment
 from favorites.models import Favorite
 from reviews.forms import RatingForm
 from reviews.models import Rating
 
-from .models import Movie
+from .models import Movie, MovieAvailability, StreamingPlatform
 from .services.tmdb import (
     get_movie_details,
     get_movie_watch_providers,
@@ -60,9 +62,13 @@ def _get_user_media_state(request, media_type: str, tmdb_id: int) -> dict:
     state = {
         "user_rating": None,
         "user_comment": None,
+        "user_status": None,
         "comments": None,
         "comment_form": None,
+        "status_form": None,
+        "collection_form": None,
         "is_favorite": False,
+        "has_availability_alert": False,
     }
     if not request.user.is_authenticated:
         return state
@@ -88,7 +94,122 @@ def _get_user_media_state(request, media_type: str, tmdb_id: int) -> dict:
         .first()
     )
     state["comment_form"] = CommentForm()
+    state["user_status"] = MediaStatus.objects.filter(
+        user=request.user,
+        media_type=media_type,
+        tmdb_id=tmdb_id,
+    ).first()
+    state["status_form"] = MediaStatusForm(
+        initial={"status": state["user_status"].status} if state["user_status"] else None
+    )
+    state["collection_form"] = CollectionAddItemForm(user=request.user)
+    state["has_availability_alert"] = AvailabilityAlert.objects.filter(
+        user=request.user,
+        media_type=media_type,
+        tmdb_id=tmdb_id,
+    ).exists()
     return state
+
+
+def _get_media_social_summary(media_type: str, tmdb_id: int) -> dict:
+    favorite_count = Favorite.objects.filter(media_type=media_type, tmdb_id=tmdb_id).count()
+    comment_count = Comment.objects.filter(media_type=media_type, tmdb_id=tmdb_id).count()
+    status_rows = (
+        MediaStatus.objects
+        .filter(media_type=media_type, tmdb_id=tmdb_id)
+        .values("status")
+        .annotate(total=Count("id"))
+    )
+    status_counts = {row["status"]: row["total"] for row in status_rows}
+    return {
+        "favorite_count": favorite_count,
+        "comment_count": comment_count,
+        "status_counts": status_counts,
+    }
+
+
+def _build_media_card(media_type: str, tmdb_id: int) -> dict | None:
+    try:
+        if media_type == "movie":
+            data = get_movie_details(tmdb_id)
+            title = data.get("title") or ""
+            date = data.get("release_date") or ""
+        else:
+            data = get_tv_details(tmdb_id)
+            title = data.get("name") or ""
+            date = data.get("first_air_date") or ""
+        return {
+            "media_type": media_type,
+            "tmdb_id": tmdb_id,
+            "title": title,
+            "date": date,
+            "poster_url": data.get("poster_url", ""),
+        }
+    except Exception:
+        return None
+
+
+def _get_internal_rankings() -> dict:
+    cache_key = "ludarius:internal-rankings"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    rankings = {
+        "most_favorited": [],
+        "most_commented": [],
+        "top_rated": [],
+        "most_wanted": [],
+    }
+
+    favorite_rows = (
+        Favorite.objects.values("media_type", "tmdb_id")
+        .annotate(total=Count("id"))
+        .order_by("-total")[:5]
+    )
+    comment_rows = (
+        Comment.objects.values("media_type", "tmdb_id")
+        .annotate(total=Count("id"))
+        .order_by("-total")[:5]
+    )
+    rating_rows = (
+        Rating.objects.values("media_type", "tmdb_id")
+        .annotate(avg_score=Avg("score"), total=Count("id"))
+        .order_by("-avg_score", "-total")[:5]
+    )
+    wanted_rows = (
+        MediaStatus.objects.filter(status=MediaStatus.Status.WANT)
+        .values("media_type", "tmdb_id")
+        .annotate(total=Count("id"))
+        .order_by("-total")[:5]
+    )
+
+    for row in favorite_rows:
+        card = _build_media_card(row["media_type"], row["tmdb_id"])
+        if card:
+            card["metric"] = row["total"]
+            rankings["most_favorited"].append(card)
+
+    for row in comment_rows:
+        card = _build_media_card(row["media_type"], row["tmdb_id"])
+        if card:
+            card["metric"] = row["total"]
+            rankings["most_commented"].append(card)
+
+    for row in rating_rows:
+        card = _build_media_card(row["media_type"], row["tmdb_id"])
+        if card:
+            card["metric"] = row["avg_score"]
+            rankings["top_rated"].append(card)
+
+    for row in wanted_rows:
+        card = _build_media_card(row["media_type"], row["tmdb_id"])
+        if card:
+            card["metric"] = row["total"]
+            rankings["most_wanted"].append(card)
+
+    cache.set(cache_key, rankings, 60 * 5)
+    return rankings
 
 
 def home(request):
@@ -216,6 +337,39 @@ def explore(request):
             "popular_tv": popular_tv[:20],
             "top_movies": top_movies[:20],
             "top_tv": top_tv[:20],
+            **_get_internal_rankings(),
+        },
+    )
+
+
+def provider_list(request):
+    providers = (
+        MovieAvailability.objects.values("platform__id", "platform__name")
+        .annotate(total=Count("id"))
+        .order_by("platform__name")
+    )
+    return render(request, "movies/provider_list.html", {"providers": providers})
+
+
+def provider_detail(request, platform_id: int):
+    platform = get_object_or_404(StreamingPlatform, id=platform_id)
+    access_type = request.GET.get("access_type", "").strip().lower()
+
+    availabilities = MovieAvailability.objects.filter(platform=platform).select_related("movie")
+    if access_type in {"subscription", "rent", "buy"}:
+        availabilities = availabilities.filter(access_type=access_type)
+    else:
+        access_type = ""
+
+    availabilities = availabilities.order_by("movie__title")
+
+    return render(
+        request,
+        "movies/provider_detail.html",
+        {
+            "platform": platform,
+            "access_type": access_type,
+            "availabilities": availabilities,
         },
     )
 
@@ -246,6 +400,7 @@ def tmdb_movie_detail(request, tmdb_id):
     local_movie, availabilities = _get_local_movie_data(tmdb_id)
     avg_data = _get_ratings_summary("movie", tmdb_id)
     user_state = _get_user_media_state(request, "movie", tmdb_id)
+    social_summary = _get_media_social_summary("movie", tmdb_id)
 
     return render(
         request,
@@ -257,6 +412,7 @@ def tmdb_movie_detail(request, tmdb_id):
             "availabilities": availabilities,
             "ratings_avg": avg_data["avg"],
             "ratings_count": avg_data["count"],
+            **social_summary,
             "rating_form": RatingForm(),
             **user_state,
         },
@@ -268,6 +424,7 @@ def tmdb_tv_detail(request, tmdb_id):
     providers = get_tv_watch_providers(tmdb_id)
     avg_data = _get_ratings_summary("tv", tmdb_id)
     user_state = _get_user_media_state(request, "tv", tmdb_id)
+    social_summary = _get_media_social_summary("tv", tmdb_id)
 
     return render(
         request,
@@ -277,6 +434,7 @@ def tmdb_tv_detail(request, tmdb_id):
             "providers": providers,
             "ratings_avg": avg_data["avg"],
             "ratings_count": avg_data["count"],
+            **social_summary,
             "rating_form": RatingForm(),
             **user_state,
         },

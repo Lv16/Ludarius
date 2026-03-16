@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Recomendacoes | Ludarius{% endblock %}
+
+{% block content %}
+<h2>Recomendacoes para voce</h2>
+
+<p>Sugestoes baseadas em favoritos, status e atividade parecida no Ludarius.</p>
+
+<ul>
+    {% for item in recommendations %}
+      <li>
+        {% if item.poster_url %}
+          <img src="{{ item.poster_url }}" alt="Poster de {{ item.title }}" width="90">
+        {% endif %}
+        <a href="{% url item.detail_url_name item.tmdb_id %}"><strong>{{ item.title }}</strong></a>
+        <br>
+        <small>{{ item.media_type }} | relevancia: {{ item.score }}</small>
+      </li>
+    {% empty %}
+      <li>Ainda nao ha recomendacoes suficientes para seu perfil.</li>
+    {% endfor %}
+</ul>
+{% endblock %}

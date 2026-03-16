@@ -3,86 +3,149 @@
 
 {% block content %}
 <h2>Explorar</h2>
-<p>Descubra filmes e séries/animes populares e bem avaliados.</p>
+<p>Descubra filmes e series/animes populares, bem avaliados e em destaque no proprio Ludarius.</p>
 
 <hr>
 
-<h3>Populares — Filmes</h3>
+<h3>Populares - Filmes</h3>
 <ul>
   {% for r in popular_movies %}
     <li>
       {% if r.poster_url %}
-        <img src="{{ r.poster_url }}" alt="Poster" width="50" style="vertical-align: middle;">
+        <img src="{{ r.poster_url }}" alt="Poster de {{ r.title }}" width="50" style="vertical-align: middle;">
       {% endif %}
-      <a href="{% url 'tmdb_movie_detail' r.tmdb_id %}">
-        <strong>{{ r.title }}</strong>
-      </a>
+      <a href="{% url 'tmdb_movie_detail' r.tmdb_id %}"><strong>{{ r.title }}</strong></a>
       {% if r.release_date %} ({{ r.release_date }}){% endif %}
-      {% if r.rating %} — Nota: {{ r.rating }}{% endif %}
+      {% if r.rating %} - Nota: {{ r.rating }}{% endif %}
     </li>
   {% empty %}
-    <li>Não foi possível carregar.</li>
+    <li>Nao foi possivel carregar.</li>
   {% endfor %}
 </ul>
 
-<hr>
-
-<h3>Populares — Séries/Animes</h3>
+<h3>Populares - Series/Animes</h3>
 <ul>
   {% for r in popular_tv %}
     <li>
       {% if r.poster_url %}
-        <img src="{{ r.poster_url }}" alt="Poster" width="50" style="vertical-align: middle;">
+        <img src="{{ r.poster_url }}" alt="Poster de {{ r.name }}" width="50" style="vertical-align: middle;">
       {% endif %}
-      <a href="{% url 'tmdb_tv_detail' r.tmdb_id %}">
-        <strong>{{ r.name }}</strong>
-      </a>
+      <a href="{% url 'tmdb_tv_detail' r.tmdb_id %}"><strong>{{ r.name }}</strong></a>
       {% if r.first_air_date %} ({{ r.first_air_date }}){% endif %}
-      {% if r.rating %} — Nota: {{ r.rating }}{% endif %}
+      {% if r.rating %} - Nota: {{ r.rating }}{% endif %}
     </li>
   {% empty %}
-    <li>Não foi possível carregar.</li>
+    <li>Nao foi possivel carregar.</li>
   {% endfor %}
 </ul>
 
-<hr>
-
-<h3>Melhores avaliados — Filmes</h3>
+<h3>Melhores avaliados - Filmes</h3>
 <ul>
   {% for r in top_movies %}
     <li>
       {% if r.poster_url %}
-        <img src="{{ r.poster_url }}" alt="Poster" width="50" style="vertical-align: middle;">
+        <img src="{{ r.poster_url }}" alt="Poster de {{ r.title }}" width="50" style="vertical-align: middle;">
       {% endif %}
-      <a href="{% url 'tmdb_movie_detail' r.tmdb_id %}">
-        <strong>{{ r.title }}</strong>
-      </a>
+      <a href="{% url 'tmdb_movie_detail' r.tmdb_id %}"><strong>{{ r.title }}</strong></a>
       {% if r.release_date %} ({{ r.release_date }}){% endif %}
-      {% if r.rating %} — Nota: {{ r.rating }}{% endif %}
+      {% if r.rating %} - Nota: {{ r.rating }}{% endif %}
     </li>
   {% empty %}
-    <li>Não foi possível carregar.</li>
+    <li>Nao foi possivel carregar.</li>
+  {% endfor %}
+</ul>
+
+<h3>Melhores avaliados - Series/Animes</h3>
+<ul>
+  {% for r in top_tv %}
+    <li>
+      {% if r.poster_url %}
+        <img src="{{ r.poster_url }}" alt="Poster de {{ r.name }}" width="50" style="vertical-align: middle;">
+      {% endif %}
+      <a href="{% url 'tmdb_tv_detail' r.tmdb_id %}"><strong>{{ r.name }}</strong></a>
+      {% if r.first_air_date %} ({{ r.first_air_date }}){% endif %}
+      {% if r.rating %} - Nota: {{ r.rating }}{% endif %}
+    </li>
+  {% empty %}
+    <li>Nao foi possivel carregar.</li>
   {% endfor %}
 </ul>
 
 <hr>
 
-<h3>Melhores avaliados — Séries/Animes</h3>
+<h3>Mais favoritados no Ludarius</h3>
 <ul>
-  {% for r in top_tv %}
+  {% for r in most_favorited %}
     <li>
       {% if r.poster_url %}
-        <img src="{{ r.poster_url }}" alt="Poster" width="50" style="vertical-align: middle;">
+        <img src="{{ r.poster_url }}" alt="Poster de {{ r.title }}" width="50" style="vertical-align: middle;">
       {% endif %}
-      <a href="{% url 'tmdb_tv_detail' r.tmdb_id %}">
-        <strong>{{ r.name }}</strong>
-      </a>
-      {% if r.first_air_date %} ({{ r.first_air_date }}){% endif %}
-      {% if r.rating %} — Nota: {{ r.rating }}{% endif %}
+      {% if r.media_type == "movie" %}
+        <a href="{% url 'tmdb_movie_detail' r.tmdb_id %}">{{ r.title }}</a>
+      {% else %}
+        <a href="{% url 'tmdb_tv_detail' r.tmdb_id %}">{{ r.title }}</a>
+      {% endif %}
+      ({{ r.metric }})
     </li>
   {% empty %}
-    <li>Não foi possível carregar.</li>
+    <li>Ainda sem dados suficientes.</li>
   {% endfor %}
 </ul>
 
+<h3>Mais comentados no Ludarius</h3>
+<ul>
+  {% for r in most_commented %}
+    <li>
+      {% if r.poster_url %}
+        <img src="{{ r.poster_url }}" alt="Poster de {{ r.title }}" width="50" style="vertical-align: middle;">
+      {% endif %}
+      {% if r.media_type == "movie" %}
+        <a href="{% url 'tmdb_movie_detail' r.tmdb_id %}">{{ r.title }}</a>
+      {% else %}
+        <a href="{% url 'tmdb_tv_detail' r.tmdb_id %}">{{ r.title }}</a>
+      {% endif %}
+      ({{ r.metric }})
+    </li>
+  {% empty %}
+    <li>Ainda sem dados suficientes.</li>
+  {% endfor %}
+</ul>
+
+<h3>Melhor avaliados pelos usuarios</h3>
+<ul>
+  {% for r in top_rated %}
+    <li>
+      {% if r.poster_url %}
+        <img src="{{ r.poster_url }}" alt="Poster de {{ r.title }}" width="50" style="vertical-align: middle;">
+      {% endif %}
+      {% if r.media_type == "movie" %}
+        <a href="{% url 'tmdb_movie_detail' r.tmdb_id %}">{{ r.title }}</a>
+      {% else %}
+        <a href="{% url 'tmdb_tv_detail' r.tmdb_id %}">{{ r.title }}</a>
+      {% endif %}
+      ({{ r.metric|floatformat:1 }})
+    </li>
+  {% empty %}
+    <li>Ainda sem dados suficientes.</li>
+  {% endfor %}
+</ul>
+
+<h3>Mais desejados</h3>
+<ul>
+  {% for r in most_wanted %}
+    <li>
+      {% if r.poster_url %}
+        <img src="{{ r.poster_url }}" alt="Poster de {{ r.title }}" width="50" style="vertical-align: middle;">
+      {% endif %}
+      {% if r.media_type == "movie" %}
+        <a href="{% url 'tmdb_movie_detail' r.tmdb_id %}">{{ r.title }}</a>
+      {% else %}
+        <a href="{% url 'tmdb_tv_detail' r.tmdb_id %}">{{ r.title }}</a>
+      {% endif %}
+      ({{ r.metric }})
+    </li>
+  {% empty %}
+    <li>Ainda sem dados suficientes.</li>
+  {% endfor %}
+</ul>
 {% endblock %}

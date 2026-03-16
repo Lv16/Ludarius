@@ -1,18 +1,33 @@
 {% extends "base.html" %}
 
-{% block title %}Minha Conta | Ludarius{% endblock %}
+{% block title %}Minha conta | Ludarius{% endblock %}
 
 {% block content %}
-<h2>Minha Conta</h2>
+<h2>Minha conta</h2>
 
-<p><strong>Usuário:</strong> {{ user.username }}</p>
+<p><strong>Usuario:</strong> {{ user.username }}</p>
 {% if user.email %}
 <p><strong>Email:</strong> {{ user.email }}</p>
 {% endif %}
+<p><a href="{% url 'notifications' %}">Notificacoes nao lidas: {{ notifications_unread }}</a></p>
+
 <hr>
 
-<p>Ações</p>
+<h3>Meu perfil</h3>
+<form method="post">
+    {% csrf_token %}
+    {{ profile_form.as_p }}
+    <button type="submit" name="save_profile" value="1">Salvar perfil</button>
+</form>
+
+<hr>
+
+<h3>Minhas acoes</h3>
 <ul>
+    <li><a href="{% url 'my_activity' %}">Minha atividade</a></li>
+    <li><a href="{% url 'public_profile' user.username %}">Meu perfil publico</a></li>
+    <li><a href="{% url 'recommendations' %}">Minhas recomendacoes</a></li>
+    <li><a href="{% url 'user_search' %}">Buscar usuarios</a></li>
     <li>
         <form action="{% url 'logout' %}" method="post" style="display:inline;">
             {% csrf_token %}
@@ -21,7 +36,61 @@
             </button>
         </form>
     </li>
-    <li><a href="{% url 'my_activity' %}">Minha atividade</a></li>
 </ul>
 
+<hr>
+
+<h3>Meus alertas de disponibilidade</h3>
+<ul>
+    {% for alert in alerts %}
+      <li>
+        {{ alert.media_type }} #{{ alert.tmdb_id }}
+        <form method="post" action="{% url 'remove_availability_alert' alert.id %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit">Remover alerta</button>
+        </form>
+      </li>
+    {% empty %}
+      <li>Voce ainda nao criou alertas.</li>
+    {% endfor %}
+</ul>
+
+<hr>
+
+<h3>Criar colecao</h3>
+<form method="post">
+    {% csrf_token %}
+    {{ collection_form.as_p }}
+    <button type="submit" name="create_collection" value="1">Criar colecao</button>
+</form>
+
+<hr>
+
+<h3>Minhas colecoes</h3>
+<ul>
+    {% for collection in collections %}
+      <li>
+        <a href="{% url 'collection_detail' collection.id %}"><strong>{{ collection.title }}</strong></a>
+        {% if collection.is_public %}(publica){% else %}(privada){% endif %}
+        <br>
+        <small>{{ collection.items.count }} item(ns)</small>
+        {% if collection.description %}<p>{{ collection.description }}</p>{% endif %}
+        {% if collection.items.all %}
+          <ul>
+            {% for item in collection.items.all %}
+              <li>
+                {{ item.media_type }} #{{ item.tmdb_id }}
+                <form method="post" action="{% url 'remove_collection_item' item.id %}" style="display:inline;">
+                  {% csrf_token %}
+                  <button type="submit">Remover</button>
+                </form>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </li>
+    {% empty %}
+      <li>Voce ainda nao criou colecoes.</li>
+    {% endfor %}
+</ul>
 {% endblock %}

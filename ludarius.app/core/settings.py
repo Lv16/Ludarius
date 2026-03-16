@@ -34,12 +34,14 @@ TESTING = "test" in sys.argv
 if DEBUG:
     ALLOWED_HOSTS = ["*"]
 else:
-    ALLOWED_HOSTS = [h for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h]
+    env_hosts = [h for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h]
+    ALLOWED_HOSTS = env_hosts or ["localhost", "127.0.0.1"]
 
 if DEBUG:
     CSRF_TRUSTED_ORIGINS = []
 else:
-    CSRF_TRUSTED_ORIGINS = [o for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o]
+    env_csrf = [o for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o]
+    CSRF_TRUSTED_ORIGINS = env_csrf or ["http://localhost", "http://127.0.0.1"]
 
 
 # Application definition
@@ -94,6 +96,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'accounts.context_processors.notifications_context',
             ],
         },
     },
