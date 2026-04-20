@@ -1,0 +1,9 @@
+Ola {{ user.username }},
+
+Use o link abaixo para entrar no Ludarius:
+
+{{ login_url }}
+
+Este link expira em {{ timeout_minutes }} minutos e so pode ser usado uma vez.
+
+Se voce nao solicitou este acesso, ignore este e-mail.

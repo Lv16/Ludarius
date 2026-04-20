@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="pt-br">
+<body>
+  <p>Ola {{ user.username }},</p>
+
+  <p>Use o botao abaixo para entrar no Ludarius:</p>
+
+  <p>
+    <a href="{{ login_url }}">Entrar no Ludarius</a>
+  </p>
+
+  <p>Este link expira em {{ timeout_minutes }} minutos e so pode ser usado uma vez.</p>
+
+  <p>Se voce nao solicitou este acesso, ignore este e-mail.</p>
+</body>
+</html>

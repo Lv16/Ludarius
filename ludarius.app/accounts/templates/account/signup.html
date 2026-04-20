@@ -1,0 +1,58 @@
+{% load socialaccount %}
+
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Criar conta | Ludarius</title>
+</head>
+<body>
+  <h1>Criar conta</h1>
+
+  <p>Use um e-mail valido. Voce precisara confirmar o e-mail antes de entrar.</p>
+
+  {% if form.non_field_errors %}
+    <div style="color: red;">
+      {% for error in form.non_field_errors %}
+        <p>{{ error }}</p>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="post" action="{% url 'account_signup' %}">
+    {% csrf_token %}
+
+    {% for field in form %}
+      {% if field.is_hidden %}
+        {{ field }}
+      {% elif field.name != "phone_number" %}
+        <div>
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label><br>
+          {{ field }}
+          {% if field.help_text %}
+            <br><small>{{ field.help_text }}</small>
+          {% endif %}
+          {% for error in field.errors %}
+            <p style="color: red;">{{ error }}</p>
+          {% endfor %}
+        </div>
+        <br>
+      {% endif %}
+    {% endfor %}
+
+    <button type="submit">Criar conta</button>
+  </form>
+
+  <p>
+    <a href="{% provider_login_url 'google' %}">Entrar com Google</a>
+  </p>
+
+  <p>
+    Ja tem conta?
+    <a href="{% url 'login' %}">Entrar</a>
+  </p>
+
+  <p><a href="/">Voltar</a></p>
+</body>
+</html>

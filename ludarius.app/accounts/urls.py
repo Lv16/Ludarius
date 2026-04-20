@@ -3,6 +3,9 @@ from . import views
 
 urlpatterns = [
     path("logout/", views.logout_view, name="logout"),
+    path("magic-link/", views.request_magic_link, name="magic_link_request"),
+    path("magic-link/sent/", views.magic_link_sent, name="magic_link_sent"),
+    path("magic-login/<str:token>/", views.magic_login, name="magic_login"),
     path("my-account/", views.my_account, name="my_account"),
     path("my-activity/", views.my_activity, name="my_activity"),
     path("notifications/", views.notifications_list, name="notifications"),

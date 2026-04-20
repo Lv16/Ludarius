@@ -1,0 +1,8 @@
+Ola,
+
+Confirme seu e-mail no Ludarius acessando este link:
+{{ activate_url }}
+
+Se voce nao solicitou essa confirmacao, ignore este e-mail.
+
+Ludarius

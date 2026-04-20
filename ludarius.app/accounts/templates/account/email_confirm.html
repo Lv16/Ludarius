@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Confirmar e-mail | Ludarius</title>
+</head>
+<body>
+  <h1>Confirmar e-mail</h1>
+
+  {% if confirmation %}
+    <p>
+      Confirme que o e-mail
+      <strong>{{ confirmation.email_address.email }}</strong>
+      pertence a voce.
+    </p>
+
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit">Confirmar minha conta</button>
+    </form>
+  {% else %}
+    <p>Este link de confirmacao e invalido ou expirou.</p>
+    <p>Faca login novamente para solicitar um novo e-mail de confirmacao.</p>
+  {% endif %}
+
+  <p><a href="{% url 'login' %}">Ir para login</a></p>
+</body>
+</html>

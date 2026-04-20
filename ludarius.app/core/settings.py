@@ -14,6 +14,7 @@ import os
 import sys
 from pathlib import Path
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 load_dotenv()
 
@@ -30,18 +31,48 @@ SECRET_KEY = os.getenv("SECRET_KEY", "change-me")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 TESTING = "test" in sys.argv
+IS_PRODUCTION = not DEBUG and not TESTING
 
-if DEBUG:
+if IS_PRODUCTION and SECRET_KEY == "change-me":
+    raise ImproperlyConfigured("SECRET_KEY must be configured in production.")
+
+if DEBUG or TESTING:
     ALLOWED_HOSTS = ["*"]
 else:
     env_hosts = [h for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h]
-    ALLOWED_HOSTS = env_hosts or ["localhost", "127.0.0.1"]
+    if not env_hosts:
+        raise ImproperlyConfigured("ALLOWED_HOSTS must be configured in production.")
+    ALLOWED_HOSTS = env_hosts
 
-if DEBUG:
+if DEBUG or TESTING:
     CSRF_TRUSTED_ORIGINS = []
 else:
     env_csrf = [o for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o]
-    CSRF_TRUSTED_ORIGINS = env_csrf or ["http://localhost", "http://127.0.0.1"]
+    CSRF_TRUSTED_ORIGINS = env_csrf
+
+
+def _admin_url_from_env() -> str:
+    value = os.getenv("ADMIN_URL", "admin/" if DEBUG or TESTING else "").strip()
+    if not value:
+        raise ImproperlyConfigured("ADMIN_URL must be configured in production.")
+    value = value.strip("/")
+    if not value:
+        raise ImproperlyConfigured("ADMIN_URL cannot be empty.")
+    if IS_PRODUCTION and value.lower() == "admin":
+        raise ImproperlyConfigured("ADMIN_URL cannot be the default 'admin/' in production.")
+    return f"{value}/"
+
+
+ADMIN_URL = _admin_url_from_env()
+ADMIN_ALLOWED_IPS = [ip.strip() for ip in os.getenv("ADMIN_ALLOWED_IPS", "").split(",") if ip.strip()]
+ADMIN_TRUST_X_FORWARDED_FOR = os.getenv("ADMIN_TRUST_X_FORWARDED_FOR", "false").lower() == "true"
+ADMIN_LOGIN_RATE_LIMIT = int(os.getenv("ADMIN_LOGIN_RATE_LIMIT", "5"))
+ADMIN_LOGIN_RATE_TIMEOUT = int(os.getenv("ADMIN_LOGIN_RATE_TIMEOUT", str(60 * 15)))
+SECURITY_CSP_ENABLED = os.getenv("SECURITY_CSP_ENABLED", "true").lower() == "true"
+SECURITY_CSP_REPORT_ONLY = os.getenv("SECURITY_CSP_REPORT_ONLY", "false").lower() == "true"
+MAGIC_LINK_TOKEN_TIMEOUT = int(os.getenv("MAGIC_LINK_TOKEN_TIMEOUT", str(60 * 15)))
+MAGIC_LINK_REQUEST_LIMIT = int(os.getenv("MAGIC_LINK_REQUEST_LIMIT", "5"))
+MAGIC_LINK_REQUEST_TIMEOUT = int(os.getenv("MAGIC_LINK_REQUEST_TIMEOUT", str(60 * 15)))
 
 
 # Application definition
@@ -60,7 +91,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',
     
     
-    'accounts',
+    'accounts.apps.AccountsConfig',
     'movies',
     'comments',
     'reviews',
@@ -69,12 +100,15 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'core.middleware.SecurityHeadersMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'core.middleware.AdminSecurityMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'allauth.account.middleware.AccountMiddleware',
+    'core.middleware.PrivateNoStoreMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -109,9 +143,14 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+if IS_PRODUCTION and not DATABASE_URL:
+    raise ImproperlyConfigured("DATABASE_URL must be configured in production.")
+
 DATABASES = {
     "default": dj_database_url.config(
-        default=os.getenv("DATABASE_URL") or f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
+        default=DATABASE_URL or f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=int(os.getenv("DB_CONN_MAX_AGE", "60" if IS_PRODUCTION else "0")),
     )
 }
 
@@ -134,11 +173,35 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
+    "django.contrib.auth.hashers.ScryptPasswordHasher",
+]
+
 SITE_ID = 1
 
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 LOGIN_URL = '/accounts/login/'
+
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = int(os.getenv("ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS", "3"))
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_LOGIN_METHODS = {"email", "username"}
+ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
+ACCOUNT_SIGNUP_FORM_HONEYPOT_FIELD = "phone_number"
+ACCOUNT_PREVENT_ENUMERATION = "strict"
+ACCOUNT_EMAIL_SUBJECT_PREFIX = "[Ludarius] "
+ACCOUNT_RATE_LIMITS = {
+    "signup": "5/h/ip",
+    "login": "30/m/ip",
+    "login_failed": "10/m/ip,5/5m/key",
+    "confirm_email": "1/3m/key",
+    "reset_password": "10/h/ip,5/h/key",
+}
 
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
@@ -146,6 +209,30 @@ SOCIALACCOUNT_PROVIDERS = {
         "AUTH_PARAMS": {"access_type": "online"},
     },
 }
+
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@ludarius.local")
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND",
+    (
+        "django.core.mail.backends.console.EmailBackend"
+        if DEBUG
+        else "django.core.mail.backends.smtp.EmailBackend"
+    ),
+)
+EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "25"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "false").lower() == "true"
+EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "false").lower() == "true"
+
+if IS_PRODUCTION:
+    if EMAIL_BACKEND == "django.core.mail.backends.console.EmailBackend":
+        raise ImproperlyConfigured("EMAIL_BACKEND must not use console backend in production.")
+    if EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend" and not os.getenv("EMAIL_HOST"):
+        raise ImproperlyConfigured("EMAIL_HOST must be configured in production.")
+    if DEFAULT_FROM_EMAIL.endswith(".local"):
+        raise ImproperlyConfigured("DEFAULT_FROM_EMAIL must be configured in production.")
 
 
 # Internationalization
@@ -183,26 +270,48 @@ STORAGES = {
 
 TMDB_API_KEY = os.getenv('TMDB_API_KEY')
 
-CACHE_BACKEND = os.getenv("CACHE_BACKEND", "django.core.cache.backends.locmem.LocMemCache")
-CACHE_LOCATION = os.getenv("CACHE_LOCATION", "ludarius-cache")
+REDIS_URL = os.getenv("REDIS_URL", "").strip()
+if IS_PRODUCTION and not REDIS_URL:
+    raise ImproperlyConfigured("REDIS_URL must be configured in production for shared rate limits and magic links.")
 
-CACHES = {
-    "default": {
-        "BACKEND": CACHE_BACKEND,
-        "LOCATION": CACHE_LOCATION,
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            },
+            "KEY_PREFIX": os.getenv("CACHE_KEY_PREFIX", "ludarius"),
+        }
     }
-}
+else:
+    CACHE_BACKEND = os.getenv("CACHE_BACKEND", "django.core.cache.backends.locmem.LocMemCache")
+    CACHE_LOCATION = os.getenv("CACHE_LOCATION", "ludarius-cache")
+    CACHES = {
+        "default": {
+            "BACKEND": CACHE_BACKEND,
+            "LOCATION": CACHE_LOCATION,
+        }
+    }
 
 # Security (prod)
-if not DEBUG:
+SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "false").lower() == "true"
+
+if IS_PRODUCTION:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000" if SECURE_SSL_REDIRECT else "0"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv(
+        "SECURE_HSTS_INCLUDE_SUBDOMAINS",
+        "true" if SECURE_HSTS_SECONDS else "false",
+    ).lower() == "true"
+    SECURE_HSTS_PRELOAD = os.getenv(
+        "SECURE_HSTS_PRELOAD",
+        "true" if SECURE_HSTS_SECONDS else "false",
+    ).lower() == "true"
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    SECURE_BROWSER_XSS_FILTER = True
     SECURE_REFERRER_POLICY = "same-origin"
     X_FRAME_OPTIONS = "DENY"
 
@@ -222,5 +331,12 @@ LOGGING = {
     "root": {
         "handlers": ["console"],
         "level": os.getenv("LOG_LEVEL", "INFO"),
+    },
+    "loggers": {
+        "security.audit": {
+            "handlers": ["console"],
+            "level": os.getenv("SECURITY_AUDIT_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
     },
 }

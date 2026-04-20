@@ -1,0 +1,10 @@
+Ola,
+
+Voce criou uma conta no Ludarius.
+
+Confirme seu e-mail acessando este link:
+{{ activate_url }}
+
+Esse link expira em alguns dias. Se voce nao criou essa conta, ignore este e-mail.
+
+Ludarius

@@ -1,6 +1,9 @@
+import re
 from unittest.mock import patch
 
+from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
+from django.core import mail
 from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -9,6 +12,113 @@ from comments.models import Comment
 from accounts.models import AvailabilityAlert, Collection, CollectionItem, MediaStatus, Notification
 from favorites.models import Favorite
 from reviews.models import Rating
+
+
+class AuthenticationSecurityTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    def test_login_requires_verified_email(self):
+        get_user_model().objects.create_user(
+            username="unverified",
+            email="unverified@example.com",
+            password="secret123",
+        )
+
+        response = self.client.post(
+            reverse("login"),
+            {"username": "unverified", "password": "secret123"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_login_allows_verified_email(self):
+        user = get_user_model().objects.create_user(
+            username="verified",
+            email="verified@example.com",
+            password="secret123",
+        )
+        EmailAddress.objects.create(
+            user=user,
+            email=user.email,
+            verified=True,
+            primary=True,
+        )
+
+        response = self.client.post(
+            reverse("login"),
+            {"username": "verified", "password": "secret123"},
+        )
+
+        self.assertRedirects(response, reverse("home"), fetch_redirect_response=False)
+        self.assertEqual(int(self.client.session["_auth_user_id"]), user.id)
+
+    def test_login_rate_limits_failed_attempts(self):
+        for _ in range(5):
+            self.client.post(
+                reverse("login"),
+                {"username": "missing", "password": "wrong"},
+            )
+
+        response = self.client.post(
+            reverse("login"),
+            {"username": "missing", "password": "wrong"},
+        )
+
+        errors = response.context["form"].errors["__all__"].as_data()
+        self.assertEqual(errors[0].code, "too_many_attempts")
+
+    def test_logout_requires_post(self):
+        response = self.client.get(reverse("logout"))
+
+        self.assertEqual(response.status_code, 405)
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_password_reset_requires_verified_email(self):
+        user = get_user_model().objects.create_user(
+            username="resetuser",
+            email="reset@example.com",
+            password="secret123",
+        )
+
+        response = self.client.post(reverse("password_reset"), {"email": user.email})
+
+        self.assertRedirects(response, reverse("password_reset_done"))
+        self.assertEqual(len(mail.outbox), 0)
+
+        EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)
+        response = self.client.post(reverse("password_reset"), {"email": user.email})
+
+        self.assertRedirects(response, reverse("password_reset_done"))
+        self.assertEqual(len(mail.outbox), 1)
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_magic_link_logs_in_verified_user_once(self):
+        user = get_user_model().objects.create_user(
+            username="magicuser",
+            email="magic@example.com",
+            password="secret123",
+        )
+        EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)
+
+        response = self.client.post(reverse("magic_link_request"), {"email": user.email})
+
+        self.assertRedirects(response, reverse("magic_link_sent"))
+        self.assertEqual(len(mail.outbox), 1)
+        match = re.search(r"http://testserver(?P<path>/accounts/magic-login/\S+/)", mail.outbox[0].body)
+        self.assertIsNotNone(match)
+
+        response = self.client.get(match.group("path"))
+
+        self.assertRedirects(response, reverse("home"), fetch_redirect_response=False)
+        self.assertEqual(int(self.client.session["_auth_user_id"]), user.id)
+
+        self.client.post(reverse("logout"))
+        response = self.client.get(match.group("path"))
+
+        self.assertRedirects(response, reverse("login"), fetch_redirect_response=False)
+        self.assertNotIn("_auth_user_id", self.client.session)
 
 
 @override_settings(

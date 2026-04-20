@@ -1,7 +1,7 @@
 import requests
 from django.core.cache import cache
 from django.db.models import Avg, Count
-from django.http import HttpResponse, HttpResponseBadRequest
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from accounts.forms import CollectionAddItemForm, MediaStatusForm
@@ -212,6 +212,106 @@ def _get_internal_rankings() -> dict:
     return rankings
 
 
+def _fallback_suggestion_items() -> list[dict]:
+    return [
+        {"media_type": "movie", "tmdb_id": 157336, "title": "Interestelar", "date": "2014-11-05"},
+        {"media_type": "movie", "tmdb_id": 27205, "title": "A Origem", "date": "2010-07-15"},
+        {"media_type": "movie", "tmdb_id": 603, "title": "Matrix", "date": "1999-03-30"},
+        {"media_type": "movie", "tmdb_id": 550, "title": "Clube da Luta", "date": "1999-10-15"},
+        {"media_type": "movie", "tmdb_id": 680, "title": "Pulp Fiction", "date": "1994-09-10"},
+        {"media_type": "movie", "tmdb_id": 299536, "title": "Vingadores: Guerra Infinita", "date": "2018-04-25"},
+        {"media_type": "tv", "tmdb_id": 1396, "title": "Breaking Bad", "date": "2008-01-20"},
+        {"media_type": "tv", "tmdb_id": 1399, "title": "Game of Thrones", "date": "2011-04-17"},
+        {"media_type": "tv", "tmdb_id": 66732, "title": "Stranger Things", "date": "2016-07-15"},
+        {"media_type": "tv", "tmdb_id": 100088, "title": "The Last of Us", "date": "2023-01-15"},
+        {"media_type": "tv", "tmdb_id": 37854, "title": "One Piece", "date": "1999-10-20"},
+        {"media_type": "tv", "tmdb_id": 46260, "title": "Naruto", "date": "2002-10-03"},
+    ]
+
+
+def _popular_suggestion_items() -> list[dict]:
+    items = []
+
+    try:
+        for movie in get_popular_movies()[:5]:
+            items.append(
+                {
+                    "media_type": "movie",
+                    "tmdb_id": movie.get("tmdb_id"),
+                    "title": movie.get("title", ""),
+                    "date": movie.get("release_date", ""),
+                }
+            )
+    except Exception:
+        pass
+
+    try:
+        for tv in get_popular_tv()[:5]:
+            items.append(
+                {
+                    "media_type": "tv",
+                    "tmdb_id": tv.get("tmdb_id"),
+                    "title": tv.get("name", ""),
+                    "date": tv.get("first_air_date", ""),
+                }
+            )
+    except Exception:
+        pass
+
+    return items or _fallback_suggestion_items()
+
+
+def search_suggestions(request):
+    q = request.GET.get("q", "").strip()
+    media_type = request.GET.get("type", "all").strip().lower()
+
+    try:
+        if len(q) >= 2:
+            items = search_multi(q, page=1).get("results", [])
+        else:
+            items = _popular_suggestion_items()
+    except Exception:
+        items = []
+
+    if not items:
+        items = _popular_suggestion_items()
+
+    if media_type in ("movie", "tv"):
+        items = [item for item in items if item.get("media_type") == media_type]
+        if not items:
+            items = [
+                item
+                for item in _fallback_suggestion_items()
+                if item.get("media_type") == media_type
+            ]
+
+    results = []
+    for item in items[:8]:
+        tmdb_id = item.get("tmdb_id")
+        item_type = item.get("media_type")
+        title = item.get("title", "")
+
+        if not tmdb_id or not item_type or not title:
+            continue
+
+        results.append(
+            {
+                "title": title,
+                "label": "Filme" if item_type == "movie" else "Serie/Anime",
+                "date": item.get("date", ""),
+                "url": (
+                    f"/tmdb/movie/{tmdb_id}/"
+                    if item_type == "movie"
+                    else f"/tmdb/tv/{tmdb_id}/"
+                ),
+            }
+        )
+
+    response = JsonResponse({"results": results})
+    response["Cache-Control"] = "no-store"
+    return response
+
+
 def home(request):
     q = request.GET.get("q", "").strip()
     media_type = request.GET.get("type", "all").strip().lower()
@@ -295,6 +395,7 @@ def home(request):
             "type": media_type,
             "results": results,
             "trending_feed": trending_feed,
+            "suggestion_options": _fallback_suggestion_items(),
             "page": page,
             "total_pages": total_pages,
             "has_prev": has_prev,

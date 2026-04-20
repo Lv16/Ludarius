@@ -1,18 +1,103 @@
+import hashlib
+import logging
+import secrets
+
+from allauth.account.models import EmailAddress
+from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import get_user_model, logout
+from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import LoginView
 from django.core.cache import cache
+from django.core import signing
+from django.core.mail import EmailMultiAlternatives
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
+from django.urls import reverse
+from django.views.decorators.http import require_POST
 
 from comments.models import Comment
 from favorites.models import Favorite
 from movies.services.tmdb import get_movie_details, get_tv_details
 from reviews.models import Rating
 
-from .forms import CollectionAddItemForm, CollectionForm, MediaStatusForm, ProfileForm
+from .forms import (
+    CollectionAddItemForm,
+    CollectionForm,
+    MediaStatusForm,
+    MagicLinkRequestForm,
+    ProfileForm,
+    RateLimitedVerifiedEmailAuthenticationForm,
+)
 from .models import AvailabilityAlert, Collection, CollectionItem, MediaStatus, Notification, Profile
+
+
+security_logger = logging.getLogger("security.audit")
+MAGIC_LINK_SALT = "accounts.magic-login"
+
+
+class SecureLoginView(LoginView):
+    authentication_form = RateLimitedVerifiedEmailAuthenticationForm
+    template_name = "registration/login.html"
+
+
+login_view = SecureLoginView.as_view()
+
+
+def request_magic_link(request):
+    if request.user.is_authenticated:
+        return redirect("home")
+
+    form = MagicLinkRequestForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        email = form.cleaned_data["email"].strip().lower()
+        cache_key = _magic_link_request_cache_key(request, email)
+
+        if cache.get(cache_key, 0) >= settings.MAGIC_LINK_REQUEST_LIMIT:
+            form.add_error("email", "Muitas solicitacoes. Aguarde alguns minutos e tente novamente.")
+        else:
+            cache.set(cache_key, cache.get(cache_key, 0) + 1, settings.MAGIC_LINK_REQUEST_TIMEOUT)
+            _send_magic_link_if_allowed(request, email)
+            return redirect("magic_link_sent")
+
+    return render(request, "accounts/magic_link_request.html", {"form": form})
+
+
+def magic_link_sent(request):
+    return render(request, "accounts/magic_link_sent.html")
+
+
+def magic_login(request, token: str):
+    try:
+        payload = signing.loads(token, salt=MAGIC_LINK_SALT, max_age=settings.MAGIC_LINK_TOKEN_TIMEOUT)
+    except signing.BadSignature:
+        security_logger.warning("magic_login_invalid_token", extra={"event": "magic_login_invalid_token"})
+        messages.error(request, "Link invalido ou expirado. Solicite um novo acesso por e-mail.")
+        return redirect("login")
+
+    user_id = payload.get("uid")
+    nonce = payload.get("nonce", "")
+    cache_key = _magic_link_token_cache_key(user_id, nonce)
+    if not cache.get(cache_key):
+        security_logger.warning(
+            "magic_login_reused_or_expired",
+            extra={"event": "magic_login_reused_or_expired", "user_id": user_id},
+        )
+        messages.error(request, "Link invalido ou ja utilizado. Solicite um novo acesso por e-mail.")
+        return redirect("login")
+
+    user = get_object_or_404(get_user_model(), pk=user_id, is_active=True)
+    if not EmailAddress.objects.filter(user=user, verified=True).exists():
+        cache.delete(cache_key)
+        messages.error(request, "Confirme seu e-mail antes de entrar.")
+        return redirect("login")
+
+    cache.delete(cache_key)
+    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    security_logger.info("magic_login_success", extra={"event": "magic_login_success", "user_id": user.id})
+    return redirect("home")
 
 
 @login_required
@@ -53,9 +138,62 @@ def my_account(request):
     )
 
 
+@require_POST
 def logout_view(request):
     logout(request)
     return redirect("home")
+
+
+def _send_magic_link_if_allowed(request, email: str):
+    email_address = (
+        EmailAddress.objects.select_related("user")
+        .filter(email__iexact=email, verified=True, user__is_active=True)
+        .first()
+    )
+    if email_address is None:
+        security_logger.info(
+            "magic_link_requested_for_unknown_or_unverified_email",
+            extra={
+                "event": "magic_link_requested_for_unknown_or_unverified_email",
+                "email_hash": _hash_value(email),
+            },
+        )
+        return
+
+    user = email_address.user
+    nonce = secrets.token_urlsafe(32)
+    cache.set(_magic_link_token_cache_key(user.pk, nonce), True, settings.MAGIC_LINK_TOKEN_TIMEOUT)
+    token = signing.dumps({"uid": user.pk, "nonce": nonce}, salt=MAGIC_LINK_SALT)
+    login_url = request.build_absolute_uri(reverse("magic_login", args=[token]))
+    context = {
+        "user": user,
+        "login_url": login_url,
+        "timeout_minutes": max(settings.MAGIC_LINK_TOKEN_TIMEOUT // 60, 1),
+    }
+    subject = render_to_string("accounts/email/magic_link_subject.txt", context).strip()
+    text_body = render_to_string("accounts/email/magic_link_message.txt", context)
+    html_body = render_to_string("accounts/email/magic_link_message.html", context)
+    message = EmailMultiAlternatives(subject, text_body, settings.DEFAULT_FROM_EMAIL, [email_address.email])
+    message.attach_alternative(html_body, "text/html")
+    message.send()
+    security_logger.info("magic_link_sent", extra={"event": "magic_link_sent", "user_id": user.pk})
+
+
+def _magic_link_request_cache_key(request, email: str) -> str:
+    raw_key = f"{_client_ip(request)}:{email}"
+    return f"magic-link-request:{_hash_value(raw_key)}"
+
+
+def _magic_link_token_cache_key(user_id, nonce: str) -> str:
+    return f"magic-link-token:{user_id}:{_hash_value(nonce)}"
+
+
+def _hash_value(value: str) -> str:
+    return hashlib.sha256((value or "").encode("utf-8")).hexdigest()
+
+
+def _client_ip(request) -> str:
+    return request.META.get("REMOTE_ADDR") or "unknown"
 
 
 @login_required

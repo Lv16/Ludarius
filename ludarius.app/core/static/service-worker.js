@@ -1,7 +1,6 @@
-const CACHE_NAME = "ludarius-v4";
+const CACHE_NAME = "ludarius-v7";
 
 const ASSETS = [
-  "/",
   "/offline/",
   "/static/manifest.json",
 
@@ -9,6 +8,7 @@ const ASSETS = [
   "/static/icons/icon-512.png",
 
   "/static/js/base.js",
+  "/static/js/home.js",
   "/static/css/base.css"
 ];
 
@@ -46,29 +46,27 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(req.url);
 
-if (url.pathname.startsWith("/static/")) {
-  event.respondWith(
-    caches.match(req).then((cached) => {
-      if (cached) return cached;
+  if (url.pathname === "/sugestoes/") {
+    event.respondWith(fetch(req));
+    return;
+  }
 
-      return fetch(req).then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
-        return res;
-      });
-    })
-  );
-  return;
-}
+  if (url.pathname.startsWith("/static/")) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
 
 
   event.respondWith(
     fetch(req)
-      .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
-        return res;
-      })
       .catch(() =>
         caches.match(req).then((cached) => cached || caches.match("/offline/"))
       )

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="pt-br">
+<body>
+  <p>Ola,</p>
+  <p>Voce criou uma conta no <strong>Ludarius</strong>.</p>
+  <p>Confirme seu e-mail para liberar o acesso:</p>
+
+  <p>
+    <a
+      href="{{ activate_url }}"
+      style="display:inline-block; padding:10px 14px; background:#111; color:#fff; text-decoration:none; border-radius:6px;"
+    >
+      Confirmar minha conta
+    </a>
+  </p>
+
+  <p>Se o botao nao funcionar, copie e cole este link no navegador:</p>
+  <p><a href="{{ activate_url }}">{{ activate_url }}</a></p>
+  <p>Se voce nao criou essa conta, ignore este e-mail.</p>
+</body>
+</html>

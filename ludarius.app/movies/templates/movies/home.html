@@ -8,13 +8,30 @@
 <p>Encontre onde assistir e quanto custa.</p>
 
 <form method="get" action="">
-  <input
-    type="text"
-    name="q"
-    placeholder="Buscar midia (filmes, series, animes)..."
-    value="{{ q|default:'' }}"
-    autocomplete="off"
-  />
+  <div style="display:inline-block; position:relative;">
+    <input
+      id="search-input"
+      type="text"
+      name="q"
+      list="search-suggestions-native"
+      placeholder="Buscar midia (filmes, series, animes)..."
+      value="{{ q|default:'' }}"
+      autocomplete="off"
+      data-suggestions-url="{% url 'search_suggestions' %}"
+      data-current-type="{{ type|default:'all' }}"
+    />
+
+    <ul
+      id="search-suggestions"
+      style="display:none; position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid #999; margin:2px 0 0; padding:0; list-style:none; z-index:1000;"
+    ></ul>
+
+    <datalist id="search-suggestions-native">
+      {% for item in suggestion_options %}
+        <option value="{{ item.title }}"></option>
+      {% endfor %}
+    </datalist>
+  </div>
   <button type="submit">Buscar</button>
 
   {% if q %}
@@ -126,6 +143,109 @@
   </p>
 {% endif %}
 
-<script src="{% static 'js/home.js' %}"></script>
+<script>
+(function () {
+  const input = document.getElementById("search-input");
+  const suggestions = document.getElementById("search-suggestions");
+
+  if (!input || !suggestions) return;
+
+  let timer = null;
+  let requestId = 0;
+  const fallbackItems = [
+    {% for item in suggestion_options %}
+      {
+        title: "{{ item.title|escapejs }}",
+        label: "{% if item.media_type == 'movie' %}Filme{% else %}Serie/Anime{% endif %}",
+        date: "{{ item.date|default:''|escapejs }}",
+        url: "{% if item.media_type == 'movie' %}{% url 'tmdb_movie_detail' item.tmdb_id %}{% else %}{% url 'tmdb_tv_detail' item.tmdb_id %}{% endif %}"
+      }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ];
+
+  function hideSuggestions() {
+    suggestions.style.display = "none";
+    suggestions.innerHTML = "";
+  }
+
+  function renderSuggestions(items) {
+    suggestions.innerHTML = "";
+
+    if (!items.length) {
+      hideSuggestions();
+      return;
+    }
+
+    items.forEach((item) => {
+      const li = document.createElement("li");
+      const link = document.createElement("a");
+      const year = item.date ? ` (${item.date.slice(0, 4)})` : "";
+
+      link.href = item.url;
+      link.textContent = `${item.title} - ${item.label}${year}`;
+      link.style.display = "block";
+      link.style.padding = "6px 8px";
+      link.style.color = "inherit";
+      link.style.textDecoration = "none";
+
+      li.appendChild(link);
+      suggestions.appendChild(li);
+    });
+
+    suggestions.style.display = "block";
+  }
+
+  function fallbackForType(type) {
+    if (type === "movie") return fallbackItems.filter((item) => item.label === "Filme");
+    if (type === "tv") return fallbackItems.filter((item) => item.label === "Serie/Anime");
+    return fallbackItems;
+  }
+
+  async function loadSuggestions() {
+    const url = input.dataset.suggestionsUrl;
+    const type = input.dataset.currentType || "all";
+    const q = input.value.trim();
+    const fallback = fallbackForType(type);
+    const currentRequestId = ++requestId;
+
+    renderSuggestions(fallback);
+
+    try {
+      const response = await fetch(
+        `${url}?q=${encodeURIComponent(q)}&type=${encodeURIComponent(type)}`,
+        { cache: "no-store" }
+      );
+      if (!response.ok) return;
+
+      const data = await response.json();
+      if (currentRequestId !== requestId) return;
+
+      renderSuggestions((data.results || []).length ? data.results : fallback);
+    } catch (e) {
+      renderSuggestions(fallback);
+    }
+  }
+
+  input.addEventListener("input", function () {
+    clearTimeout(timer);
+    timer = setTimeout(loadSuggestions, 150);
+  });
+
+  input.addEventListener("focus", loadSuggestions);
+
+  document.addEventListener("click", function (event) {
+    if (event.target !== input && !suggestions.contains(event.target)) {
+      hideSuggestions();
+    }
+  });
+
+  input.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") {
+      hideSuggestions();
+    }
+  });
+})();
+</script>
+<script src="{% static 'js/home.js' %}?v=20260420b"></script>
 
 {% endblock %}

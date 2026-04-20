@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Entrar por e-mail | Ludarius</title>
+</head>
+<body>
+  <h1>Entrar com link por e-mail</h1>
+
+  <p>Informe seu e-mail verificado. Se ele existir na conta, enviaremos um link de acesso temporario.</p>
+
+  <form method="post">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div style="color: red;">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div>
+      <label for="{{ form.email.id_for_label }}">E-mail</label><br>
+      {{ form.email }}
+      {% if form.email.errors %}
+        <div style="color: red;">{{ form.email.errors }}</div>
+      {% endif %}
+    </div>
+
+    <br>
+
+    <button type="submit">Enviar link</button>
+  </form>
+
+  <p><a href="{% url 'login' %}">Voltar para login</a></p>
+</body>
+</html>

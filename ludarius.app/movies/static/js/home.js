@@ -1,5 +1,4 @@
 (function () {
-  // só roda na home
   if (window.location.pathname !== "/") return;
 
   const section = document.getElementById("last-seen-section");
@@ -17,8 +16,6 @@
 
   if (!list.length) return;
 
-  // monta HTML simples
-  
   listEl.innerHTML = list.map((x) => {
     const label = x.media_type === "movie" ? "Filme" : "Série/Anime";
     return `

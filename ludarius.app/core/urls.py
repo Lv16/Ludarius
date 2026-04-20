@@ -15,15 +15,23 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from django.contrib.auth.views import PasswordResetView
 from django.urls import path, include
 from accounts import views as accounts_views
+from accounts.forms import VerifiedEmailPasswordResetForm
 from django.views.generic import TemplateView
 from django.conf import settings
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path(settings.ADMIN_URL, admin.site.urls),
+    path("accounts/login/", accounts_views.login_view, name="login"),
     path("accounts/logout/", accounts_views.logout_view, name="logout"),
+    path(
+        "accounts/password_reset/",
+        PasswordResetView.as_view(form_class=VerifiedEmailPasswordResetForm),
+        name="password_reset",
+    ),
     path("", include('movies.urls')),
     path("", include("comments.urls")),
     path("accounts/", include("django.contrib.auth.urls")),
