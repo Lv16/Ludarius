@@ -44,9 +44,14 @@
     <button type="submit">Criar conta</button>
   </form>
 
-  <p>
-    <a href="{% provider_login_url 'google' %}">Entrar com Google</a>
-  </p>
+  {% get_providers as socialaccount_providers %}
+  {% for provider in socialaccount_providers %}
+    {% if provider.id == "google" %}
+      <p>
+        <a href="{% provider_login_url provider %}">Entrar com Google</a>
+      </p>
+    {% endif %}
+  {% endfor %}
 
   <p>
     Ja tem conta?

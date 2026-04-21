@@ -69,6 +69,7 @@ env/
 
 # Logs
 *.log
+tmp/
 
 # Secrets and credentials
 *.pem

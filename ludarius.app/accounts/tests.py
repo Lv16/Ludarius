@@ -75,6 +75,23 @@ class AuthenticationSecurityTests(TestCase):
         self.assertEqual(response.status_code, 405)
 
     @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_signup_sends_confirmation_email(self):
+        response = self.client.post(
+            reverse("account_signup"),
+            {
+                "email": "newuser@example.com",
+                "username": "newuser",
+                "password1": "StrongPass123!",
+                "password2": "StrongPass123!",
+            },
+        )
+
+        self.assertRedirects(response, reverse("account_email_verification_sent"))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("newuser@example.com", mail.outbox[0].to)
+        self.assertTrue(EmailAddress.objects.filter(email="newuser@example.com", verified=False).exists())
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
     def test_password_reset_requires_verified_email(self):
         user = get_user_model().objects.create_user(
             username="resetuser",

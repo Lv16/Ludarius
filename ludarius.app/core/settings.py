@@ -211,10 +211,11 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@ludarius.local")
+EMAIL_FILE_PATH = os.getenv("EMAIL_FILE_PATH", str(BASE_DIR / "tmp" / "emails"))
 EMAIL_BACKEND = os.getenv(
     "EMAIL_BACKEND",
     (
-        "django.core.mail.backends.console.EmailBackend"
+        "django.core.mail.backends.filebased.EmailBackend"
         if DEBUG
         else "django.core.mail.backends.smtp.EmailBackend"
     ),
