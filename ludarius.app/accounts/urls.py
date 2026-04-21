@@ -6,6 +6,12 @@ urlpatterns = [
     path("magic-link/", views.request_magic_link, name="magic_link_request"),
     path("magic-link/sent/", views.magic_link_sent, name="magic_link_sent"),
     path("magic-login/<str:token>/", views.magic_login, name="magic_login"),
+    path("resend-confirmation/", views.resend_email_confirmation, name="email_confirmation_resend"),
+    path(
+        "resend-confirmation/sent/",
+        views.email_confirmation_resend_sent,
+        name="email_confirmation_resend_sent",
+    ),
     path("my-account/", views.my_account, name="my_account"),
     path("my-activity/", views.my_activity, name="my_activity"),
     path("notifications/", views.notifications_list, name="notifications"),

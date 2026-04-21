@@ -92,6 +92,48 @@ class AuthenticationSecurityTests(TestCase):
         self.assertTrue(EmailAddress.objects.filter(email="newuser@example.com", verified=False).exists())
 
     @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_resend_confirmation_sends_email_for_unverified_address(self):
+        user = get_user_model().objects.create_user(
+            username="resenduser",
+            email="resend@example.com",
+            password="secret123",
+        )
+        EmailAddress.objects.create(user=user, email=user.email, verified=False, primary=True)
+
+        response = self.client.post(reverse("email_confirmation_resend"), {"email": user.email})
+
+        self.assertRedirects(response, reverse("email_confirmation_resend_sent"))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(user.email, mail.outbox[0].to)
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_resend_confirmation_is_generic_for_unknown_or_verified_address(self):
+        verified_user = get_user_model().objects.create_user(
+            username="verifiedresend",
+            email="verified-resend@example.com",
+            password="secret123",
+        )
+        EmailAddress.objects.create(
+            user=verified_user,
+            email=verified_user.email,
+            verified=True,
+            primary=True,
+        )
+
+        verified_response = self.client.post(
+            reverse("email_confirmation_resend"),
+            {"email": verified_user.email},
+        )
+        unknown_response = self.client.post(
+            reverse("email_confirmation_resend"),
+            {"email": "unknown-resend@example.com"},
+        )
+
+        self.assertRedirects(verified_response, reverse("email_confirmation_resend_sent"))
+        self.assertRedirects(unknown_response, reverse("email_confirmation_resend_sent"))
+        self.assertEqual(len(mail.outbox), 0)
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
     def test_password_reset_requires_verified_email(self):
         user = get_user_model().objects.create_user(
             username="resetuser",

@@ -19,11 +19,13 @@ from django.contrib.auth.views import PasswordResetView
 from django.urls import path, include
 from accounts import views as accounts_views
 from accounts.forms import VerifiedEmailPasswordResetForm
+from core.views import health_check
 from django.views.generic import TemplateView
 from django.conf import settings
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 
 urlpatterns = [
+    path("health/", health_check, name="health_check"),
     path(settings.ADMIN_URL, admin.site.urls),
     path("accounts/login/", accounts_views.login_view, name="login"),
     path("accounts/logout/", accounts_views.logout_view, name="logout"),

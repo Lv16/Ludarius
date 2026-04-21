@@ -1,13 +1,79 @@
 import hashlib
 import ipaddress
 import logging
+import time
+import uuid
 
 from django.conf import settings
 from django.core.cache import cache
 from django.http import HttpResponse, HttpResponseNotFound
 
+from .logging import reset_request_id, set_request_id
+
 
 logger = logging.getLogger(__name__)
+request_logger = logging.getLogger("core.requests")
+
+
+class RequestIdMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        request_id = self._request_id_from_header(request) or uuid.uuid4().hex
+        request.request_id = request_id
+        token = set_request_id(request_id)
+        try:
+            response = self.get_response(request)
+            response["X-Request-ID"] = request_id
+            return response
+        finally:
+            reset_request_id(token)
+
+    def _request_id_from_header(self, request) -> str:
+        value = request.META.get("HTTP_X_REQUEST_ID", "").strip()
+        if not value:
+            return ""
+        return value[:128]
+
+
+class RequestLogMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self.static_path = settings.STATIC_URL if settings.STATIC_URL.startswith("/") else "/static/"
+
+    def __call__(self, request):
+        start = time.monotonic()
+        try:
+            response = self.get_response(request)
+        except Exception:
+            self._log_request(request, 500, start, failed=True)
+            raise
+
+        self._log_request(request, response.status_code, start)
+        return response
+
+    def _log_request(self, request, status_code: int, start: float, failed: bool = False):
+        if self._should_skip(request):
+            return
+
+        duration_ms = round((time.monotonic() - start) * 1000, 2)
+        user = getattr(request, "user", None)
+        extra = {
+            "method": request.method,
+            "path": request.path,
+            "status_code": status_code,
+            "duration_ms": duration_ms,
+            "user_id": getattr(user, "pk", None) if getattr(user, "is_authenticated", False) else None,
+            "client_ip": request.META.get("REMOTE_ADDR", ""),
+        }
+        if failed:
+            request_logger.exception("request_failed", extra=extra)
+        else:
+            request_logger.info("request_finished", extra=extra)
+
+    def _should_skip(self, request) -> bool:
+        return request.path.startswith(self.static_path)
 
 
 class SecurityHeadersMiddleware:

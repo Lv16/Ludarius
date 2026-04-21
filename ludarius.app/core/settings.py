@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 from dotenv import load_dotenv
+import logging
 import os
 import sys
 from pathlib import Path
@@ -73,6 +74,8 @@ SECURITY_CSP_REPORT_ONLY = os.getenv("SECURITY_CSP_REPORT_ONLY", "false").lower(
 MAGIC_LINK_TOKEN_TIMEOUT = int(os.getenv("MAGIC_LINK_TOKEN_TIMEOUT", str(60 * 15)))
 MAGIC_LINK_REQUEST_LIMIT = int(os.getenv("MAGIC_LINK_REQUEST_LIMIT", "5"))
 MAGIC_LINK_REQUEST_TIMEOUT = int(os.getenv("MAGIC_LINK_REQUEST_TIMEOUT", str(60 * 15)))
+EMAIL_CONFIRMATION_RESEND_LIMIT = int(os.getenv("EMAIL_CONFIRMATION_RESEND_LIMIT", "5"))
+EMAIL_CONFIRMATION_RESEND_TIMEOUT = int(os.getenv("EMAIL_CONFIRMATION_RESEND_TIMEOUT", str(60 * 15)))
 
 
 # Application definition
@@ -91,6 +94,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',
     
     
+    'core.apps.CoreConfig',
     'accounts.apps.AccountsConfig',
     'movies',
     'comments',
@@ -100,6 +104,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'core.middleware.RequestIdMiddleware',
     'core.middleware.SecurityHeadersMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -108,6 +113,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'allauth.account.middleware.AccountMiddleware',
+    'core.middleware.RequestLogMiddleware',
     'core.middleware.PrivateNoStoreMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -153,6 +159,8 @@ DATABASES = {
         conn_max_age=int(os.getenv("DB_CONN_MAX_AGE", "60" if IS_PRODUCTION else "0")),
     )
 }
+
+DATABASE_BACKUP_DIR = os.getenv("DATABASE_BACKUP_DIR", str(BASE_DIR / "backups" / "database"))
 
 
 # Password validation
@@ -220,18 +228,32 @@ EMAIL_BACKEND = os.getenv(
         else "django.core.mail.backends.smtp.EmailBackend"
     ),
 )
-EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
-EMAIL_PORT = int(os.getenv("EMAIL_PORT", "25"))
+EMAIL_PROVIDER = os.getenv("EMAIL_PROVIDER", "smtp").strip().lower()
+EMAIL_PROVIDER_DEFAULTS = {
+    "smtp": {"host": "localhost", "port": 25, "tls": False, "ssl": False},
+    "gmail": {"host": "smtp.gmail.com", "port": 587, "tls": True, "ssl": False},
+    "resend": {"host": "smtp.resend.com", "port": 587, "tls": True, "ssl": False},
+    "brevo": {"host": "smtp-relay.brevo.com", "port": 587, "tls": True, "ssl": False},
+}
+if EMAIL_PROVIDER not in EMAIL_PROVIDER_DEFAULTS:
+    raise ImproperlyConfigured("EMAIL_PROVIDER must be one of: smtp, gmail, resend, brevo.")
+EMAIL_DEFAULTS = EMAIL_PROVIDER_DEFAULTS[EMAIL_PROVIDER]
+EMAIL_HOST = os.getenv("EMAIL_HOST", EMAIL_DEFAULTS["host"])
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", str(EMAIL_DEFAULTS["port"])))
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "false").lower() == "true"
-EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "false").lower() == "true"
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", str(EMAIL_DEFAULTS["tls"]).lower()).lower() == "true"
+EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", str(EMAIL_DEFAULTS["ssl"]).lower()).lower() == "true"
+EMAIL_REQUIRE_AUTH = os.getenv("EMAIL_REQUIRE_AUTH", "true" if IS_PRODUCTION else "false").lower() == "true"
 
 if IS_PRODUCTION:
     if EMAIL_BACKEND == "django.core.mail.backends.console.EmailBackend":
         raise ImproperlyConfigured("EMAIL_BACKEND must not use console backend in production.")
-    if EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend" and not os.getenv("EMAIL_HOST"):
+    if EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend" and not EMAIL_HOST:
         raise ImproperlyConfigured("EMAIL_HOST must be configured in production.")
+    if EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend" and EMAIL_REQUIRE_AUTH:
+        if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
+            raise ImproperlyConfigured("EMAIL_HOST_USER and EMAIL_HOST_PASSWORD must be configured in production.")
     if DEFAULT_FROM_EMAIL.endswith(".local"):
         raise ImproperlyConfigured("DEFAULT_FROM_EMAIL must be configured in production.")
 
@@ -321,12 +343,50 @@ CSRF_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
 
+SENTRY_DSN = os.getenv("SENTRY_DSN", "").strip()
+SENTRY_ENVIRONMENT = os.getenv("SENTRY_ENVIRONMENT", "development" if DEBUG else "production")
+SENTRY_TRACES_SAMPLE_RATE = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.0"))
+SENTRY_SEND_DEFAULT_PII = os.getenv("SENTRY_SEND_DEFAULT_PII", "false").lower() == "true"
+RELEASE_VERSION = os.getenv("RELEASE_VERSION", "").strip()
+
+if SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.django import DjangoIntegration
+        from sentry_sdk.integrations.logging import LoggingIntegration
+    except ImportError as exc:
+        raise ImproperlyConfigured("sentry-sdk must be installed when SENTRY_DSN is configured.") from exc
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[
+            DjangoIntegration(),
+            LoggingIntegration(level=logging.INFO, event_level=logging.ERROR),
+        ],
+        environment=SENTRY_ENVIRONMENT,
+        release=RELEASE_VERSION or None,
+        send_default_pii=SENTRY_SEND_DEFAULT_PII,
+        traces_sample_rate=SENTRY_TRACES_SAMPLE_RATE,
+    )
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "request_id": {
+            "()": "core.logging.RequestIdFilter",
+        },
+    },
+    "formatters": {
+        "standard": {
+            "format": "%(asctime)s %(levelname)s [%(name)s] [request_id=%(request_id)s] %(message)s",
+        },
+    },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
+            "filters": ["request_id"],
+            "formatter": "standard",
         }
     },
     "root": {
@@ -337,6 +397,11 @@ LOGGING = {
         "security.audit": {
             "handlers": ["console"],
             "level": os.getenv("SECURITY_AUDIT_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        "core.requests": {
+            "handlers": ["console"],
+            "level": os.getenv("REQUEST_LOG_LEVEL", "INFO"),
             "propagate": False,
         },
     },

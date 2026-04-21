@@ -26,6 +26,7 @@ from reviews.models import Rating
 from .forms import (
     CollectionAddItemForm,
     CollectionForm,
+    EmailConfirmationResendForm,
     MediaStatusForm,
     MagicLinkRequestForm,
     ProfileForm,
@@ -67,6 +68,29 @@ def request_magic_link(request):
 
 def magic_link_sent(request):
     return render(request, "accounts/magic_link_sent.html")
+
+
+def resend_email_confirmation(request):
+    if request.user.is_authenticated and EmailAddress.objects.filter(user=request.user, verified=True).exists():
+        return redirect("home")
+
+    form = EmailConfirmationResendForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        email = form.cleaned_data["email"].strip().lower()
+        cache_key = _email_confirmation_resend_cache_key(request, email)
+
+        if cache.get(cache_key, 0) >= settings.EMAIL_CONFIRMATION_RESEND_LIMIT:
+            form.add_error("email", "Muitas solicitacoes. Aguarde alguns minutos e tente novamente.")
+        else:
+            cache.set(cache_key, cache.get(cache_key, 0) + 1, settings.EMAIL_CONFIRMATION_RESEND_TIMEOUT)
+            _send_confirmation_email_if_allowed(request, email)
+            return redirect("email_confirmation_resend_sent")
+
+    return render(request, "accounts/resend_confirmation.html", {"form": form})
+
+
+def email_confirmation_resend_sent(request):
+    return render(request, "accounts/resend_confirmation_sent.html")
 
 
 def magic_login(request, token: str):
@@ -179,9 +203,38 @@ def _send_magic_link_if_allowed(request, email: str):
     security_logger.info("magic_link_sent", extra={"event": "magic_link_sent", "user_id": user.pk})
 
 
+def _send_confirmation_email_if_allowed(request, email: str):
+    email_address = (
+        EmailAddress.objects.select_related("user")
+        .filter(email__iexact=email, verified=False, user__is_active=True)
+        .order_by("-pk")
+        .first()
+    )
+    if email_address is None:
+        security_logger.info(
+            "confirmation_resend_requested_for_unknown_or_verified_email",
+            extra={
+                "event": "confirmation_resend_requested_for_unknown_or_verified_email",
+                "email_hash": _hash_value(email),
+            },
+        )
+        return
+
+    email_address.send_confirmation(request=request, signup=True)
+    security_logger.info(
+        "confirmation_email_resent",
+        extra={"event": "confirmation_email_resent", "user_id": email_address.user_id},
+    )
+
+
 def _magic_link_request_cache_key(request, email: str) -> str:
     raw_key = f"{_client_ip(request)}:{email}"
     return f"magic-link-request:{_hash_value(raw_key)}"
+
+
+def _email_confirmation_resend_cache_key(request, email: str) -> str:
+    raw_key = f"{_client_ip(request)}:{email}"
+    return f"email-confirmation-resend:{_hash_value(raw_key)}"
 
 
 def _magic_link_token_cache_key(user_id, nonce: str) -> str:

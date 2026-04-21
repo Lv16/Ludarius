@@ -12,6 +12,11 @@
   <p>Abra sua caixa de entrada e clique no botao de confirmacao. Se nao encontrar, verifique o spam.</p>
   <p>Por seguranca, sua conta so podera entrar depois que o e-mail for confirmado.</p>
 
+  <p>
+    Nao recebeu?
+    <a href="{% url 'email_confirmation_resend' %}">Reenviar confirmacao</a>
+  </p>
+
   <p><a href="{% url 'login' %}">Voltar para o login</a></p>
   <p><a href="/">Voltar ao inicio</a></p>
 </body>

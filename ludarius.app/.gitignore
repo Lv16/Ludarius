@@ -49,6 +49,7 @@ local_settings.py
 # Media and static files (if generated)
 media/
 staticfiles/
+backups/
 
 # PyCharm/VSCode
 .idea/

@@ -1,6 +1,7 @@
 Django>=6.0.1
 argon2-cffi
 requests
+sentry-sdk
 python-dotenv
 django-allauth
 django-redis

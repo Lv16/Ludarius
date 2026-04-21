@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reenviar confirmacao | Ludarius</title>
+</head>
+<body>
+  <h1>Reenviar confirmacao de e-mail</h1>
+
+  <p>Informe o e-mail usado no cadastro. Se ele existir e ainda nao estiver confirmado, enviaremos um novo link.</p>
+
+  <form method="post">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div style="color: red;">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div>
+      <label for="{{ form.email.id_for_label }}">E-mail</label><br>
+      {{ form.email }}
+      {% if form.email.errors %}
+        <div style="color: red;">{{ form.email.errors }}</div>
+      {% endif %}
+    </div>
+
+    <br>
+
+    <button type="submit">Reenviar confirmacao</button>
+  </form>
+
+  <p><a href="{% url 'login' %}">Voltar para login</a></p>
+</body>
+</html>

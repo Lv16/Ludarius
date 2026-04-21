@@ -69,6 +69,10 @@ class MagicLinkRequestForm(forms.Form):
     email = forms.EmailField(label="E-mail")
 
 
+class EmailConfirmationResendForm(forms.Form):
+    email = forms.EmailField(label="E-mail")
+
+
 class VerifiedEmailPasswordResetForm(PasswordResetForm):
     def get_users(self, email):
         for user in super().get_users(email):
